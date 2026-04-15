@@ -12,6 +12,7 @@ interface ServerOptions {
   config: Config;
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function createMcpServer(options: ServerOptions) {
   const { config } = options;
 
@@ -21,6 +22,7 @@ export function createMcpServer(options: ServerOptions) {
     budgetSyncId: config.budgetSyncId,
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
   const server = new Server(
     { name: 'actual-budget-mcp', version: '0.1.0' },
     { capabilities: { tools: {}, resources: {}, prompts: {} } },
@@ -33,7 +35,7 @@ export function createMcpServer(options: ServerOptions) {
   const allTools = [...crudTools, queryTool, ...analyticsTools];
 
   // Register tool list handler
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  server.setRequestHandler(ListToolsRequestSchema, () => ({
     tools: allTools.map((t) => t.schema),
   }));
 

@@ -1,15 +1,23 @@
 import { describe, it, expect, vi } from 'vitest';
+import type { ActualClient } from '../../src/client.js';
+import type { ToolDefinition } from '../../src/tools/shared.js';
 
-function mockClient(overrides: Record<string, unknown> = {}) {
+function mockClient(overrides: Record<string, unknown> = {}): ActualClient {
   return {
-    getAccounts: vi.fn().mockResolvedValue({ ok: true, data: [{ id: 'a1', name: 'Checking', offbudget: false, closed: false }] }),
+    getAccounts: vi.fn().mockResolvedValue({
+      ok: true,
+      data: [{ id: 'a1', name: 'Checking', offbudget: false, closed: false }],
+    }),
     getAccountBalance: vi.fn().mockResolvedValue({ ok: true, data: 250000 }),
     getTransactions: vi.fn().mockResolvedValue({ ok: true, data: [] }),
     createTransaction: vi.fn().mockResolvedValue({ ok: true, data: 'tx-1' }),
     updateTransaction: vi.fn().mockResolvedValue({ ok: true, data: 'ok' }),
     deleteTransaction: vi.fn().mockResolvedValue({ ok: true, data: 'ok' }),
     getCategories: vi.fn().mockResolvedValue({ ok: true, data: [{ id: 'c1', name: 'Groceries' }] }),
-    getCategoryGroups: vi.fn().mockResolvedValue({ ok: true, data: [{ id: 'g1', name: 'Bills', categories: [{ id: 'c1', name: 'Groceries' }] }] }),
+    getCategoryGroups: vi.fn().mockResolvedValue({
+      ok: true,
+      data: [{ id: 'g1', name: 'Bills', categories: [{ id: 'c1', name: 'Groceries' }] }],
+    }),
     createCategory: vi.fn().mockResolvedValue({ ok: true, data: 'new-cat-id' }),
     updateCategory: vi.fn().mockResolvedValue({ ok: true, data: 'ok' }),
     deleteCategory: vi.fn().mockResolvedValue({ ok: true, data: 'ok' }),
@@ -21,7 +29,9 @@ function mockClient(overrides: Record<string, unknown> = {}) {
     updatePayee: vi.fn().mockResolvedValue({ ok: true, data: 'ok' }),
     deletePayee: vi.fn().mockResolvedValue({ ok: true, data: 'ok' }),
     mergePayees: vi.fn().mockResolvedValue({ ok: true, data: 'ok' }),
-    getBudgetMonth: vi.fn().mockResolvedValue({ ok: true, data: { month: '2026-03', categoryGroups: [] } }),
+    getBudgetMonth: vi
+      .fn()
+      .mockResolvedValue({ ok: true, data: { month: '2026-03', categoryGroups: [] } }),
     setBudgetAmount: vi.fn().mockResolvedValue({ ok: true, data: 'ok' }),
     transferBudget: vi.fn().mockResolvedValue({ ok: true, data: 'ok' }),
     getSchedules: vi.fn().mockResolvedValue({ ok: true, data: [] }),
@@ -37,7 +47,13 @@ function mockClient(overrides: Record<string, unknown> = {}) {
     deleteNotes: vi.fn().mockResolvedValue({ ok: true, data: 'ok' }),
     runBankSync: vi.fn().mockResolvedValue({ ok: true, data: 'ok' }),
     ...overrides,
-  } as any;
+  } as unknown as ActualClient;
+}
+
+function findTool(tools: ToolDefinition[], name: string): ToolDefinition {
+  const tool = tools.find((t) => t.schema.name === name);
+  if (!tool) throw new Error(`Tool "${name}" not found`);
+  return tool;
 }
 
 describe('CRUD tools', () => {
@@ -45,12 +61,12 @@ describe('CRUD tools', () => {
     const { createCrudTools } = await import('../../src/tools/crud.js');
     const client = mockClient();
     const tools = createCrudTools(client, '$');
-    const tool = tools.find((t) => t.schema.name === 'get-accounts')!;
+    const tool = findTool(tools, 'get-accounts');
 
     const result = await tool.handler({});
 
     expect(result.isError).toBeUndefined();
-    const text = (result.content[0] as { text: string }).text;
+    const text = result.content[0]?.text ?? '';
     expect(text).toContain('Checking');
     expect(text).toContain('$2,500.00');
   });
@@ -59,7 +75,7 @@ describe('CRUD tools', () => {
     const { createCrudTools } = await import('../../src/tools/crud.js');
     const client = mockClient();
     const tools = createCrudTools(client, '$');
-    const tool = tools.find((t) => t.schema.name === 'create-transaction')!;
+    const tool = findTool(tools, 'create-transaction');
 
     const result = await tool.handler({
       account_id: 'a1',
@@ -69,17 +85,21 @@ describe('CRUD tools', () => {
     });
 
     expect(result.isError).toBeUndefined();
-    const text = (result.content[0] as { text: string }).text;
+    const text = result.content[0]?.text ?? '';
     expect(text).toContain('Transaction Created');
     expect(text).toContain('-$50.00');
-    expect(client.createTransaction).toHaveBeenCalledWith('a1', expect.objectContaining({ amount: -5000 }), undefined);
+    expect(client.createTransaction).toHaveBeenCalledWith(
+      'a1',
+      expect.objectContaining({ amount: -5000 }),
+      undefined,
+    );
   });
 
   it('create-transaction should pass subtransactions for splits', async () => {
     const { createCrudTools } = await import('../../src/tools/crud.js');
     const client = mockClient();
     const tools = createCrudTools(client, '$');
-    const tool = tools.find((t) => t.schema.name === 'create-transaction')!;
+    const tool = findTool(tools, 'create-transaction');
 
     await tool.handler({
       account_id: 'a1',
@@ -96,9 +116,9 @@ describe('CRUD tools', () => {
       'a1',
       expect.objectContaining({
         subtransactions: expect.arrayContaining([
-          expect.objectContaining({ amount: -7000 }),
-          expect.objectContaining({ amount: -3000, notes: 'Birthday' }),
-        ]),
+          expect.objectContaining({ amount: -7000 }) as unknown,
+          expect.objectContaining({ amount: -3000, notes: 'Birthday' }) as unknown,
+        ]) as unknown,
       }),
       undefined,
     );
@@ -108,13 +128,21 @@ describe('CRUD tools', () => {
     const { createCrudTools } = await import('../../src/tools/crud.js');
     const client = mockClient();
     const tools = createCrudTools(client, '$');
-    const tool = tools.find((t) => t.schema.name === 'manage-category')!;
+    const tool = findTool(tools, 'manage-category');
 
-    const result = await tool.handler({ action: 'create', name: 'Entertainment', group_id: 'g1' });
+    const result = await tool.handler({
+      action: 'create',
+      name: 'Entertainment',
+      group_id: 'g1',
+    });
 
     expect(result.isError).toBeUndefined();
-    expect(client.createCategory).toHaveBeenCalledWith({ name: 'Entertainment', group_id: 'g1', is_income: undefined });
-    const text = (result.content[0] as { text: string }).text;
+    expect(client.createCategory).toHaveBeenCalledWith({
+      name: 'Entertainment',
+      group_id: 'g1',
+      is_income: undefined,
+    });
+    const text = result.content[0]?.text ?? '';
     expect(text).toContain('Category Created');
   });
 
@@ -122,7 +150,7 @@ describe('CRUD tools', () => {
     const { createCrudTools } = await import('../../src/tools/crud.js');
     const client = mockClient();
     const tools = createCrudTools(client, '$');
-    const tool = tools.find((t) => t.schema.name === 'manage-category')!;
+    const tool = findTool(tools, 'manage-category');
 
     const result = await tool.handler({ action: 'create' });
 
@@ -133,12 +161,12 @@ describe('CRUD tools', () => {
     const { createCrudTools } = await import('../../src/tools/crud.js');
     const client = mockClient();
     const tools = createCrudTools(client, '$');
-    const tool = tools.find((t) => t.schema.name === 'get-notes')!;
+    const tool = findTool(tools, 'get-notes');
 
     const result = await tool.handler({ type: 'category', id: 'c1' });
 
     expect(result.isError).toBeUndefined();
-    const text = (result.content[0] as { text: string }).text;
+    const text = result.content[0]?.text ?? '';
     expect(text).toContain('My note content');
   });
 
@@ -148,12 +176,12 @@ describe('CRUD tools', () => {
       getAccounts: vi.fn().mockResolvedValue({ ok: false, error: 'HTTP 500: Server error' }),
     });
     const tools = createCrudTools(client, '$');
-    const tool = tools.find((t) => t.schema.name === 'get-accounts')!;
+    const tool = findTool(tools, 'get-accounts');
 
     const result = await tool.handler({});
 
     expect(result.isError).toBe(true);
-    const text = (result.content[0] as { text: string }).text;
+    const text = result.content[0]?.text ?? '';
     expect(text).toContain('500');
   });
 

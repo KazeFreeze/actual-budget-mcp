@@ -27,7 +27,10 @@ describe('formatMarkdownTable', () => {
     const { formatMarkdownTable } = await import('../src/format.js');
     const result = formatMarkdownTable(
       ['Name', 'Amount'],
-      [['Groceries', '-$500.00'], ['Rent', '-$1,500.00']],
+      [
+        ['Groceries', '-$500.00'],
+        ['Rent', '-$1,500.00'],
+      ],
     );
     expect(result).toContain('| Name');
     expect(result).toContain('| Groceries');
@@ -46,7 +49,16 @@ describe('formatTransactionTable', () => {
   it('should render simple transactions in a table', async () => {
     const { formatTransactionTable } = await import('../src/format.js');
     const result = formatTransactionTable(
-      [{ date: '2026-03-14', payee: 'Spotify', category: 'Subscriptions', amount: -1599, notes: '', subtransactions: [] }],
+      [
+        {
+          date: '2026-03-14',
+          payee: 'Spotify',
+          category: 'Subscriptions',
+          amount: -1599,
+          notes: '',
+          subtransactions: [],
+        },
+      ],
       '$',
     );
     expect(result).toContain('Spotify');
@@ -57,13 +69,19 @@ describe('formatTransactionTable', () => {
   it('should render split transactions with tree characters', async () => {
     const { formatTransactionTable } = await import('../src/format.js');
     const result = formatTransactionTable(
-      [{
-        date: '2026-03-15', payee: 'Costco', category: '', amount: -15678, notes: 'Weekly',
-        subtransactions: [
-          { payee: 'Costco', category: 'Groceries', amount: -12000, notes: '' },
-          { payee: 'Gift Shop', category: 'Gifts', amount: -3678, notes: 'Birthday' },
-        ],
-      }],
+      [
+        {
+          date: '2026-03-15',
+          payee: 'Costco',
+          category: '',
+          amount: -15678,
+          notes: 'Weekly',
+          subtransactions: [
+            { payee: 'Costco', category: 'Groceries', amount: -12000, notes: '' },
+            { payee: 'Gift Shop', category: 'Gifts', amount: -3678, notes: 'Birthday' },
+          ],
+        },
+      ],
       '£',
     );
     expect(result).toContain('├─');
@@ -88,7 +106,10 @@ describe('formatKeyValue', () => {
 describe('buildNameMap and resolveName', () => {
   it('should map IDs to names', async () => {
     const { buildNameMap, resolveName } = await import('../src/format.js');
-    const map = buildNameMap([{ id: 'cat-1', name: 'Groceries' }, { id: 'cat-2', name: 'Rent' }]);
+    const map = buildNameMap([
+      { id: 'cat-1', name: 'Groceries' },
+      { id: 'cat-2', name: 'Rent' },
+    ]);
     expect(resolveName('cat-1', map)).toBe('Groceries');
     expect(resolveName('cat-2', map)).toBe('Rent');
   });

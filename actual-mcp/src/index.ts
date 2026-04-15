@@ -9,7 +9,7 @@ const config = loadConfig();
 const logger = pino({ name: 'actual-mcp', level: config.logLevel });
 const { server, client } = createMcpServer({ config });
 
-async function main() {
+async function main(): Promise<void> {
   if (config.mcpTransport === 'stdio') {
     const transport = new StdioServerTransport();
     await server.connect(transport);
@@ -40,7 +40,10 @@ async function main() {
       const auth = createAuthMiddleware(config.mcpAuthToken);
       app.use((req, res, next) => {
         // Skip auth for health check
-        if (req.path === '/health') return next();
+        if (req.path === '/health') {
+          next();
+          return;
+        }
         auth(req, res, next);
       });
     }
@@ -51,6 +54,7 @@ async function main() {
     });
 
     if (config.mcpTransport === 'sse') {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       const { SSEServerTransport } = await import('@modelcontextprotocol/sdk/server/sse.js');
       const transports = new Map<string, InstanceType<typeof SSEServerTransport>>();
 
@@ -73,9 +77,8 @@ async function main() {
     } else {
       // Streamable HTTP transport
       try {
-        const { StreamableHTTPServerTransport } = await import(
-          '@modelcontextprotocol/sdk/server/streamableHttp.js'
-        );
+        const { StreamableHTTPServerTransport } =
+          await import('@modelcontextprotocol/sdk/server/streamableHttp.js');
 
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: undefined, // stateless mode
@@ -93,25 +96,26 @@ async function main() {
     }
 
     const httpServer = app.listen(config.mcpPort, () => {
-      logger.info(
-        { port: config.mcpPort, transport: config.mcpTransport },
-        'MCP server running',
-      );
+      logger.info({ port: config.mcpPort, transport: config.mcpTransport }, 'MCP server running');
     });
 
-    const shutdown = async () => {
+    const shutdown = async (): Promise<void> => {
       logger.info('Shutting down...');
       httpServer.close();
       await server.close();
       process.exit(0);
     };
 
-    process.on('SIGTERM', shutdown);
-    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', () => {
+      void shutdown();
+    });
+    process.on('SIGINT', () => {
+      void shutdown();
+    });
   }
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   logger.error(err, 'Failed to start MCP server');
   process.exit(1);
 });

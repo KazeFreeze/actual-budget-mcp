@@ -106,10 +106,7 @@ describe('createClient', () => {
       server.use(
         http.post(`${BUDGET_BASE}/accounts/:accountId/transactions`, async ({ request }) => {
           capturedBody = await request.json();
-          return HttpResponse.json(
-            { data: { added: ['id-1'], updated: [] } },
-            { status: 201 },
-          );
+          return HttpResponse.json({ data: { added: ['id-1'], updated: [] } }, { status: 201 });
         }),
       );
 
@@ -120,7 +117,10 @@ describe('createClient', () => {
         budgetSyncId: 'test-budget',
       });
 
-      const result = await client.createTransaction('acct-1', { date: '2026-03-15', amount: -5000 });
+      const result = await client.createTransaction('acct-1', {
+        date: '2026-03-15',
+        amount: -5000,
+      });
 
       expect(result.ok).toBe(true);
       expect(capturedBody).toEqual(

@@ -1,10 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
+import type { ActualClient } from '../../src/client.js';
 
 describe('run-query tool', () => {
-  function mockClient(queryResult: unknown = []) {
+  function mockClient(queryResult: unknown = []): ActualClient {
     return {
       runQuery: vi.fn().mockResolvedValue({ ok: true, data: queryResult }),
-    } as any;
+    } as unknown as ActualClient;
   }
 
   it('should render array results as markdown table', async () => {
@@ -22,7 +23,7 @@ describe('run-query tool', () => {
     });
 
     expect(result.isError).toBeUndefined();
-    const text = (result.content[0] as { text: string }).text;
+    const text = result.content[0]?.text ?? '';
     expect(text).toContain('2 rows');
     expect(text).toContain('Groceries');
     expect(text).toContain('-$500.00');
@@ -32,15 +33,15 @@ describe('run-query tool', () => {
   it('should render scalar results (from calculate)', async () => {
     const { createQueryTool } = await import('../../src/tools/query.js');
     const client = mockClient(-200000);
-    const tool = createQueryTool(client, '£');
+    const tool = createQueryTool(client, '\u00A3');
 
     const result = await tool.handler({
       table: 'transactions',
       calculate: { $sum: '$amount' },
     });
 
-    const text = (result.content[0] as { text: string }).text;
-    expect(text).toContain('-£2,000.00');
+    const text = result.content[0]?.text ?? '';
+    expect(text).toContain('-\u00A32,000.00');
   });
 
   it('should handle empty results', async () => {
@@ -50,13 +51,15 @@ describe('run-query tool', () => {
 
     const result = await tool.handler({ table: 'transactions' });
 
-    const text = (result.content[0] as { text: string }).text;
+    const text = result.content[0]?.text ?? '';
     expect(text).toContain('0 rows');
   });
 
   it('should return error when query fails', async () => {
     const { createQueryTool } = await import('../../src/tools/query.js');
-    const client = { runQuery: vi.fn().mockResolvedValue({ ok: false, error: 'HTTP 501: Not Implemented' }) } as any;
+    const client = {
+      runQuery: vi.fn().mockResolvedValue({ ok: false, error: 'HTTP 501: Not Implemented' }),
+    } as unknown as ActualClient;
     const tool = createQueryTool(client, '$');
 
     const result = await tool.handler({ table: 'transactions' });

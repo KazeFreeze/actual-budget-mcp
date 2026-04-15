@@ -19,7 +19,8 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
     {
       schema: {
         name: 'get-accounts',
-        description: 'List all budget accounts with their current balances. Use this to see an overview of all accounts.',
+        description:
+          'List all budget accounts with their current balances. Use this to see an overview of all accounts.',
         inputSchema: zodInputSchema(z.object({})),
       },
       handler: async () => {
@@ -27,14 +28,12 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
         if (!res.ok) return err(res.error);
 
         const accounts = res.data;
-        const balances = await Promise.all(
-          accounts.map((a) => client.getAccountBalance(a.id)),
-        );
+        const balances = await Promise.all(accounts.map((a) => client.getAccountBalance(a.id)));
 
         const headers = ['Name', 'Balance', 'Off Budget', 'Closed'];
         const rows = accounts.map((a, i) => {
           const bal = balances[i];
-          const balanceStr = bal.ok ? formatAmount(bal.data, currencySymbol) : 'N/A';
+          const balanceStr = bal?.ok ? formatAmount(bal.data, currencySymbol) : 'N/A';
           return [a.name, balanceStr, a.offbudget ? 'Yes' : 'No', a.closed ? 'Yes' : 'No'];
         });
 
@@ -46,18 +45,25 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
     {
       schema: {
         name: 'get-transactions',
-        description: 'Query transactions for an account with optional date filters. Returns a formatted transaction list.',
-        inputSchema: zodInputSchema(z.object({
-          account_id: z.string().describe('Account ID to query transactions for'),
-          since_date: z.string().optional().describe('Start date (YYYY-MM-DD). Defaults to 30 days ago.'),
-          until_date: z.string().optional().describe('End date (YYYY-MM-DD)'),
-        })),
+        description:
+          'Query transactions for an account with optional date filters. Returns a formatted transaction list.',
+        inputSchema: zodInputSchema(
+          z.object({
+            account_id: z.string().describe('Account ID to query transactions for'),
+            since_date: z
+              .string()
+              .optional()
+              .describe('Start date (YYYY-MM-DD). Defaults to 30 days ago.'),
+            until_date: z.string().optional().describe('End date (YYYY-MM-DD)'),
+          }),
+        ),
       },
       handler: async (params) => {
         const accountId = str(params, 'account_id');
         if (!accountId) return err('Missing required parameter: account_id');
 
-        const sinceDate = str(params, 'since_date') ?? format(subDays(new Date(), 30), 'yyyy-MM-dd');
+        const sinceDate =
+          str(params, 'since_date') ?? format(subDays(new Date(), 30), 'yyyy-MM-dd');
         const untilDate = str(params, 'until_date');
 
         const res = await client.getTransactions(accountId, sinceDate, untilDate);
@@ -75,12 +81,14 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
 
         const txRows = res.data.map((tx) => ({
           date: tx.date,
-          payee: tx.payee_name || resolveName(tx.payee, payeeMap),
+          payee: tx.payee_name ?? resolveName(tx.payee, payeeMap),
           category: resolveName(tx.category, categoryMap),
           amount: tx.amount,
-          notes: tx.notes || '',
-          subtransactions: (tx.subtransactions || []).map((sub: Record<string, unknown>) => ({
-            payee: (sub.payee_name as string) || resolveName(sub.payee as string, payeeMap),
+          notes: tx.notes ?? '',
+          subtransactions: (tx.subtransactions ?? []).map((sub: Record<string, unknown>) => ({
+            payee:
+              (typeof sub.payee_name === 'string' && sub.payee_name) ||
+              resolveName(typeof sub.payee === 'string' ? sub.payee : '', payeeMap),
             category: resolveName(sub.category as string, categoryMap),
             amount: sub.amount as number,
             notes: (sub.notes as string) || '',
@@ -95,21 +103,29 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
     {
       schema: {
         name: 'create-transaction',
-        description: 'Create a new transaction in an account. Supports split transactions via subtransactions array.',
-        inputSchema: zodInputSchema(z.object({
-          account_id: z.string().describe('Account ID'),
-          date: z.string().describe('Transaction date (YYYY-MM-DD)'),
-          amount: z.number().describe('Amount in cents (negative for expenses)'),
-          payee_name: z.string().optional().describe('Payee name'),
-          category_id: z.string().optional().describe('Category ID'),
-          notes: z.string().optional().describe('Optional notes'),
-          subtransactions: z.array(z.looseObject({
-            amount: z.number().optional(),
-            category_id: z.string().optional(),
-            payee_name: z.string().optional(),
-            notes: z.string().optional(),
-          })).optional().describe('Split transaction items'),
-        })),
+        description:
+          'Create a new transaction in an account. Supports split transactions via subtransactions array.',
+        inputSchema: zodInputSchema(
+          z.object({
+            account_id: z.string().describe('Account ID'),
+            date: z.string().describe('Transaction date (YYYY-MM-DD)'),
+            amount: z.number().describe('Amount in cents (negative for expenses)'),
+            payee_name: z.string().optional().describe('Payee name'),
+            category_id: z.string().optional().describe('Category ID'),
+            notes: z.string().optional().describe('Optional notes'),
+            subtransactions: z
+              .array(
+                z.looseObject({
+                  amount: z.number().optional(),
+                  category_id: z.string().optional(),
+                  payee_name: z.string().optional(),
+                  notes: z.string().optional(),
+                }),
+              )
+              .optional()
+              .describe('Split transaction items'),
+          }),
+        ),
       },
       handler: async (params) => {
         const accountId = str(params, 'account_id');
@@ -130,12 +146,14 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
         const res = await client.createTransaction(accountId, transaction, undefined);
         if (!res.ok) return err(res.error);
 
-        return ok(formatKeyValue('Transaction Created', {
-          ID: res.data,
-          Date: String(transaction.date || ''),
-          Amount: formatAmount(transaction.amount as number, currencySymbol),
-          Payee: String(transaction.payee_name || ''),
-        }));
+        return ok(
+          formatKeyValue('Transaction Created', {
+            ID: res.data,
+            Date: str(params, 'date') ?? '',
+            Amount: formatAmount(num(params, 'amount') ?? 0, currencySymbol),
+            Payee: str(params, 'payee_name') ?? '',
+          }),
+        );
       },
     },
 
@@ -143,15 +161,18 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
     {
       schema: {
         name: 'update-transaction',
-        description: 'Update an existing transaction by ID. Pass only the fields you want to change.',
-        inputSchema: zodInputSchema(z.object({
-          id: z.string().describe('Transaction ID'),
-          date: z.string().optional(),
-          amount: z.number().optional(),
-          payee_name: z.string().optional(),
-          category_id: z.string().optional(),
-          notes: z.string().optional(),
-        })),
+        description:
+          'Update an existing transaction by ID. Pass only the fields you want to change.',
+        inputSchema: zodInputSchema(
+          z.object({
+            id: z.string().describe('Transaction ID'),
+            date: z.string().optional(),
+            amount: z.number().optional(),
+            payee_name: z.string().optional(),
+            category_id: z.string().optional(),
+            notes: z.string().optional(),
+          }),
+        ),
       },
       handler: async (params) => {
         const id = str(params, 'id');
@@ -165,7 +186,12 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
         const res = await client.updateTransaction(id, fields);
         if (!res.ok) return err(res.error);
 
-        return ok(formatKeyValue('Transaction Updated', { ID: id, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, String(v)])) }));
+        return ok(
+          formatKeyValue('Transaction Updated', {
+            ID: id,
+            ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, String(v)])),
+          }),
+        );
       },
     },
 
@@ -174,9 +200,11 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
       schema: {
         name: 'delete-transaction',
         description: 'Delete a transaction by ID.',
-        inputSchema: zodInputSchema(z.object({
-          id: z.string().describe('Transaction ID'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            id: z.string().describe('Transaction ID'),
+          }),
+        ),
       },
       handler: async (params) => {
         const id = str(params, 'id');
@@ -203,7 +231,7 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
         const headers = ['Group', 'Category', 'ID'];
         const rows: string[][] = [];
         for (const group of res.data) {
-          for (const cat of group.categories || []) {
+          for (const cat of group.categories ?? []) {
             rows.push([group.name, cat.name, cat.id]);
           }
         }
@@ -217,27 +245,50 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
     {
       schema: {
         name: 'manage-category',
-        description: 'Create, update, or delete categories and category groups. Use the action parameter to specify the operation.',
-        inputSchema: zodInputSchema(z.object({
-          action: z.enum(['create', 'update', 'delete', 'create_group', 'update_group', 'delete_group']),
-          id: z.string().optional().describe('Category or group ID (for update/delete)'),
-          name: z.string().optional().describe('Name (for create/update)'),
-          group_id: z.string().optional().describe('Group ID (required for category create)'),
-          is_income: z.boolean().optional(),
-          transfer_category_id: z.string().optional().describe('Category to transfer existing transactions to (for delete)'),
-        })),
+        description:
+          'Create, update, or delete categories and category groups. Use the action parameter to specify the operation.',
+        inputSchema: zodInputSchema(
+          z.object({
+            action: z.enum([
+              'create',
+              'update',
+              'delete',
+              'create_group',
+              'update_group',
+              'delete_group',
+            ]),
+            id: z.string().optional().describe('Category or group ID (for update/delete)'),
+            name: z.string().optional().describe('Name (for create/update)'),
+            group_id: z.string().optional().describe('Group ID (required for category create)'),
+            is_income: z.boolean().optional(),
+            transfer_category_id: z
+              .string()
+              .optional()
+              .describe('Category to transfer existing transactions to (for delete)'),
+          }),
+        ),
       },
       handler: async (params) => {
         const action = str(params, 'action');
+        if (!action) return err('Missing required parameter: action');
 
         switch (action) {
           case 'create': {
             const name = str(params, 'name');
             const groupId = str(params, 'group_id');
-            if (!name || !groupId) return err('Missing required fields: name and group_id are required for category creation.');
-            const res = await client.createCategory({ name, group_id: groupId, is_income: bool(params, 'is_income') });
+            if (!name || !groupId)
+              return err(
+                'Missing required fields: name and group_id are required for category creation.',
+              );
+            const res = await client.createCategory({
+              name,
+              group_id: groupId,
+              is_income: bool(params, 'is_income'),
+            });
             if (!res.ok) return err(res.error);
-            return ok(formatKeyValue('Category Created', { ID: res.data, Name: name, Group: groupId }));
+            return ok(
+              formatKeyValue('Category Created', { ID: res.data, Name: name, Group: groupId }),
+            );
           }
           case 'update': {
             const id = str(params, 'id');
@@ -259,7 +310,10 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
           case 'create_group': {
             const name = str(params, 'name');
             if (!name) return err('Missing required field: name');
-            const res = await client.createCategoryGroup({ name, is_income: bool(params, 'is_income') });
+            const res = await client.createCategoryGroup({
+              name,
+              is_income: bool(params, 'is_income'),
+            });
             if (!res.ok) return err(res.error);
             return ok(formatKeyValue('Category Group Created', { ID: res.data, Name: name }));
           }
@@ -281,7 +335,9 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
             return ok(formatKeyValue('Category Group Deleted', { ID: id }));
           }
           default:
-            return err(`Unknown action: ${action}. Valid actions: create, update, delete, create_group, update_group, delete_group`);
+            return err(
+              `Unknown action: ${action}. Valid actions: create, update, delete, create_group, update_group, delete_group`,
+            );
         }
       },
     },
@@ -310,16 +366,22 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
       schema: {
         name: 'manage-payee',
         description: 'Create, update, delete, or merge payees.',
-        inputSchema: zodInputSchema(z.object({
-          action: z.enum(['create', 'update', 'delete', 'merge']),
-          id: z.string().optional().describe('Payee ID (for update/delete)'),
-          name: z.string().optional().describe('Payee name (for create/update)'),
-          target_id: z.string().optional().describe('Target payee ID (for merge)'),
-          merge_ids: z.array(z.string()).optional().describe('Payee IDs to merge into target (for merge)'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            action: z.enum(['create', 'update', 'delete', 'merge']),
+            id: z.string().optional().describe('Payee ID (for update/delete)'),
+            name: z.string().optional().describe('Payee name (for create/update)'),
+            target_id: z.string().optional().describe('Target payee ID (for merge)'),
+            merge_ids: z
+              .array(z.string())
+              .optional()
+              .describe('Payee IDs to merge into target (for merge)'),
+          }),
+        ),
       },
       handler: async (params) => {
         const action = str(params, 'action');
+        if (!action) return err('Missing required parameter: action');
 
         switch (action) {
           case 'create': {
@@ -348,10 +410,16 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
           case 'merge': {
             const targetId = str(params, 'target_id');
             const mergeIds = params.merge_ids;
-            if (!targetId || !Array.isArray(mergeIds)) return err('Missing required fields: target_id and merge_ids');
+            if (!targetId || !Array.isArray(mergeIds))
+              return err('Missing required fields: target_id and merge_ids');
             const res = await client.mergePayees(targetId, mergeIds as string[]);
             if (!res.ok) return err(res.error);
-            return ok(formatKeyValue('Payees Merged', { Target: targetId, 'Merged Count': String(mergeIds.length) }));
+            return ok(
+              formatKeyValue('Payees Merged', {
+                Target: targetId,
+                'Merged Count': String(mergeIds.length),
+              }),
+            );
           }
           default:
             return err(`Unknown action: ${action}. Valid actions: create, update, delete, merge`);
@@ -363,10 +431,13 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
     {
       schema: {
         name: 'get-budget-month',
-        description: 'Get budget data for a specific month, including category budgeted/spent/balance amounts.',
-        inputSchema: zodInputSchema(z.object({
-          month: z.string().describe('Month in YYYY-MM format'),
-        })),
+        description:
+          'Get budget data for a specific month, including category budgeted/spent/balance amounts.',
+        inputSchema: zodInputSchema(
+          z.object({
+            month: z.string().describe('Month in YYYY-MM format'),
+          }),
+        ),
       },
       handler: async (params) => {
         const month = str(params, 'month');
@@ -378,28 +449,34 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
         const budget = res.data;
         const lines: string[] = [`## Budget: ${budget.month}`];
 
-        if (budget.toBudget !== undefined) lines.push(`**To Budget:** ${formatAmount(budget.toBudget, currencySymbol)}`);
-        if (budget.totalIncome !== undefined) lines.push(`**Total Income:** ${formatAmount(budget.totalIncome, currencySymbol)}`);
-        if (budget.totalSpent !== undefined) lines.push(`**Total Spent:** ${formatAmount(budget.totalSpent, currencySymbol)}`);
-        if (budget.totalBalance !== undefined) lines.push(`**Total Balance:** ${formatAmount(budget.totalBalance, currencySymbol)}`);
+        if (budget.toBudget !== undefined)
+          lines.push(`**To Budget:** ${formatAmount(budget.toBudget, currencySymbol)}`);
+        if (budget.totalIncome !== undefined)
+          lines.push(`**Total Income:** ${formatAmount(budget.totalIncome, currencySymbol)}`);
+        if (budget.totalSpent !== undefined)
+          lines.push(`**Total Spent:** ${formatAmount(budget.totalSpent, currencySymbol)}`);
+        if (budget.totalBalance !== undefined)
+          lines.push(`**Total Balance:** ${formatAmount(budget.totalBalance, currencySymbol)}`);
 
         if (budget.categoryGroups && budget.categoryGroups.length > 0) {
           lines.push('');
           const headers = ['Group', 'Category', 'Budgeted', 'Spent', 'Balance'];
           const rows: string[][] = [];
           for (const group of budget.categoryGroups) {
-            for (const cat of group.categories || []) {
+            for (const cat of group.categories ?? []) {
               rows.push([
                 group.name,
                 cat.name,
-                formatAmount(cat.budgeted || 0, currencySymbol),
-                formatAmount(cat.spent || 0, currencySymbol),
-                formatAmount(cat.balance || 0, currencySymbol),
+                formatAmount(cat.budgeted ?? 0, currencySymbol),
+                formatAmount(cat.spent ?? 0, currencySymbol),
+                formatAmount(cat.balance ?? 0, currencySymbol),
               ]);
             }
           }
           if (rows.length > 0) {
-            lines.push(formatMarkdownTable(headers, rows, ['left', 'left', 'right', 'right', 'right']));
+            lines.push(
+              formatMarkdownTable(headers, rows, ['left', 'left', 'right', 'right', 'right']),
+            );
           }
         }
 
@@ -412,27 +489,37 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
       schema: {
         name: 'set-budget-amount',
         description: 'Set the budgeted amount for a category in a specific month.',
-        inputSchema: zodInputSchema(z.object({
-          month: z.string().describe('Month in YYYY-MM format'),
-          category_id: z.string().describe('Category ID'),
-          amount: z.number().describe('Budget amount in cents'),
-          carryover: z.boolean().optional().describe('Enable rollover for this category'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            month: z.string().describe('Month in YYYY-MM format'),
+            category_id: z.string().describe('Category ID'),
+            amount: z.number().describe('Budget amount in cents'),
+            carryover: z.boolean().optional().describe('Enable rollover for this category'),
+          }),
+        ),
       },
       handler: async (params) => {
         const month = str(params, 'month');
         const categoryId = str(params, 'category_id');
         const amount = num(params, 'amount');
-        if (!month || !categoryId || amount === undefined) return err('Missing required parameters: month, category_id, amount');
+        if (!month || !categoryId || amount === undefined)
+          return err('Missing required parameters: month, category_id, amount');
 
-        const res = await client.setBudgetAmount(month, categoryId, amount, bool(params, 'carryover'));
+        const res = await client.setBudgetAmount(
+          month,
+          categoryId,
+          amount,
+          bool(params, 'carryover'),
+        );
         if (!res.ok) return err(res.error);
 
-        return ok(formatKeyValue('Budget Amount Set', {
-          Month: month,
-          Category: categoryId,
-          Amount: formatAmount(amount, currencySymbol),
-        }));
+        return ok(
+          formatKeyValue('Budget Amount Set', {
+            Month: month,
+            Category: categoryId,
+            Amount: formatAmount(amount, currencySymbol),
+          }),
+        );
       },
     },
 
@@ -441,29 +528,34 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
       schema: {
         name: 'transfer-budget',
         description: 'Move money between budget categories within a month.',
-        inputSchema: zodInputSchema(z.object({
-          month: z.string().describe('Month in YYYY-MM format'),
-          from_category_id: z.string().describe('Source category ID'),
-          to_category_id: z.string().describe('Destination category ID'),
-          amount: z.number().describe('Amount in cents to transfer'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            month: z.string().describe('Month in YYYY-MM format'),
+            from_category_id: z.string().describe('Source category ID'),
+            to_category_id: z.string().describe('Destination category ID'),
+            amount: z.number().describe('Amount in cents to transfer'),
+          }),
+        ),
       },
       handler: async (params) => {
         const month = str(params, 'month');
         const fromId = str(params, 'from_category_id');
         const toId = str(params, 'to_category_id');
         const amount = num(params, 'amount');
-        if (!month || !fromId || !toId || amount === undefined) return err('Missing required parameters');
+        if (!month || !fromId || !toId || amount === undefined)
+          return err('Missing required parameters');
 
         const res = await client.transferBudget(month, fromId, toId, amount);
         if (!res.ok) return err(res.error);
 
-        return ok(formatKeyValue('Budget Transfer Complete', {
-          Month: month,
-          From: fromId,
-          To: toId,
-          Amount: formatAmount(amount, currencySymbol),
-        }));
+        return ok(
+          formatKeyValue('Budget Transfer Complete', {
+            Month: month,
+            From: fromId,
+            To: toId,
+            Amount: formatAmount(amount, currencySymbol),
+          }),
+        );
       },
     },
 
@@ -483,8 +575,8 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
         const headers = ['ID', 'Name', 'Next Date', 'Completed'];
         const rows = res.data.map((s) => [
           s.id,
-          s.name || '',
-          s.next_date || '',
+          s.name ?? '',
+          s.next_date ?? '',
           s.completed ? 'Yes' : 'No',
         ]);
         return ok(formatMarkdownTable(headers, rows));
@@ -496,14 +588,17 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
       schema: {
         name: 'manage-schedule',
         description: 'Create, update, or delete scheduled transactions.',
-        inputSchema: zodInputSchema(z.object({
-          action: z.enum(['create', 'update', 'delete']),
-          id: z.string().optional().describe('Schedule ID (for update/delete)'),
-          schedule: z.looseObject({}).optional().describe('Schedule data (for create/update)'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            action: z.enum(['create', 'update', 'delete']),
+            id: z.string().optional().describe('Schedule ID (for update/delete)'),
+            schedule: z.looseObject({}).optional().describe('Schedule data (for create/update)'),
+          }),
+        ),
       },
       handler: async (params) => {
         const action = str(params, 'action');
+        if (!action) return err('Missing required parameter: action');
 
         switch (action) {
           case 'create': {
@@ -549,11 +644,7 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
         if (res.data.length === 0) return ok('No rules found.');
 
         const headers = ['ID', 'Stage', 'Conditions Op'];
-        const rows = res.data.map((r) => [
-          r.id,
-          r.stage || '',
-          r.conditionsOp || '',
-        ]);
+        const rows = res.data.map((r) => [r.id, r.stage ?? '', r.conditionsOp ?? '']);
         return ok(formatMarkdownTable(headers, rows));
       },
     },
@@ -563,14 +654,17 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
       schema: {
         name: 'manage-rule',
         description: 'Create, update, or delete transaction rules.',
-        inputSchema: zodInputSchema(z.object({
-          action: z.enum(['create', 'update', 'delete']),
-          id: z.string().optional().describe('Rule ID (for update/delete)'),
-          rule: z.looseObject({}).optional().describe('Rule data (for create/update)'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            action: z.enum(['create', 'update', 'delete']),
+            id: z.string().optional().describe('Rule ID (for update/delete)'),
+            rule: z.looseObject({}).optional().describe('Rule data (for create/update)'),
+          }),
+        ),
       },
       handler: async (params) => {
         const action = str(params, 'action');
+        if (!action) return err('Missing required parameter: action');
 
         switch (action) {
           case 'create': {
@@ -607,10 +701,12 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
       schema: {
         name: 'get-notes',
         description: 'Get notes for a category, account, or budget month.',
-        inputSchema: zodInputSchema(z.object({
-          type: z.enum(['category', 'account', 'budgetmonth']).describe('Entity type'),
-          id: z.string().describe('Entity ID'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            type: z.enum(['category', 'account', 'budgetmonth']).describe('Entity type'),
+            id: z.string().describe('Entity ID'),
+          }),
+        ),
       },
       handler: async (params) => {
         const type = str(params, 'type') as 'category' | 'account' | 'budgetmonth' | undefined;
@@ -630,17 +726,20 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
       schema: {
         name: 'set-notes',
         description: 'Set or update notes for a category, account, or budget month.',
-        inputSchema: zodInputSchema(z.object({
-          type: z.enum(['category', 'account', 'budgetmonth']).describe('Entity type'),
-          id: z.string().describe('Entity ID'),
-          notes: z.string().describe('Note content'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            type: z.enum(['category', 'account', 'budgetmonth']).describe('Entity type'),
+            id: z.string().describe('Entity ID'),
+            notes: z.string().describe('Note content'),
+          }),
+        ),
       },
       handler: async (params) => {
         const type = str(params, 'type') as 'category' | 'account' | 'budgetmonth' | undefined;
         const id = str(params, 'id');
         const notes = str(params, 'notes');
-        if (!type || !id || notes === undefined) return err('Missing required parameters: type, id, and notes');
+        if (!type || !id || notes === undefined)
+          return err('Missing required parameters: type, id, and notes');
 
         const res = await client.setNotes(type, id, notes);
         if (!res.ok) return err(res.error);
@@ -654,18 +753,25 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
       schema: {
         name: 'run-bank-sync',
         description: 'Trigger bank sync for all accounts or a specific account.',
-        inputSchema: zodInputSchema(z.object({
-          account_id: z.string().optional().describe('Optional account ID to sync a specific account'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            account_id: z
+              .string()
+              .optional()
+              .describe('Optional account ID to sync a specific account'),
+          }),
+        ),
       },
       handler: async (params) => {
         const accountId = str(params, 'account_id');
         const res = await client.runBankSync(accountId);
         if (!res.ok) return err(res.error);
 
-        return ok(formatKeyValue('Bank Sync Complete', {
-          Scope: accountId ? `Account ${accountId}` : 'All accounts',
-        }));
+        return ok(
+          formatKeyValue('Bank Sync Complete', {
+            Scope: accountId ? `Account ${accountId}` : 'All accounts',
+          }),
+        );
       },
     },
   ];

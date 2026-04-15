@@ -1,12 +1,7 @@
 import { z } from 'zod';
 import { format, subMonths, parse, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import type { ActualClient } from '../client.js';
-import {
-  formatAmount,
-  formatMarkdownTable,
-  buildNameMap,
-  resolveName,
-} from '../format.js';
+import { formatAmount, formatMarkdownTable, buildNameMap, resolveName } from '../format.js';
 import { type ToolDefinition, ok, err, str, num, zodInputSchema } from './shared.js';
 
 /** Get current month as YYYY-MM. */
@@ -53,7 +48,10 @@ function monthRange(startMonth: string, endMonth: string): string[] {
 
 // --- Factory ---
 
-export function createAnalyticsTools(client: ActualClient, currencySymbol: string): ToolDefinition[] {
+export function createAnalyticsTools(
+  client: ActualClient,
+  currencySymbol: string,
+): ToolDefinition[] {
   return [
     // 1. monthly-financial-summary
     {
@@ -61,9 +59,14 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         name: 'monthly-financial-summary',
         description:
           'Get a monthly financial summary including income, expenses, net, savings rate, and top spending categories. Defaults to current month.',
-        inputSchema: zodInputSchema(z.object({
-          month: z.string().optional().describe('Month in YYYY-MM format (defaults to current month)'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            month: z
+              .string()
+              .optional()
+              .describe('Month in YYYY-MM format (defaults to current month)'),
+          }),
+        ),
       },
       handler: async (params) => {
         const month = str(params, 'month') ?? currentMonth();
@@ -102,7 +105,11 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
           const isChild = tx.is_child as boolean | undefined;
 
           // Skip parent transactions of splits (children carry the actual amounts)
-          if (isChild === false && Array.isArray(tx.subtransactions) && (tx.subtransactions as unknown[]).length > 0) {
+          if (
+            isChild === false &&
+            Array.isArray(tx.subtransactions) &&
+            (tx.subtransactions as unknown[]).length > 0
+          ) {
             continue;
           }
 
@@ -139,8 +146,13 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
           lines.push('', '### Top Spending Categories');
           const headers = ['Category', 'Amount', '% of Expenses'];
           const rows = topSpending.map(([catId, amount]) => {
-            const pct = absExpenses > 0 ? ((Math.abs(amount) / absExpenses) * 100).toFixed(1) : '0.0';
-            return [resolveName(catId, categoryMap), formatAmount(amount, currencySymbol), `${pct}%`];
+            const pct =
+              absExpenses > 0 ? ((Math.abs(amount) / absExpenses) * 100).toFixed(1) : '0.0';
+            return [
+              resolveName(catId, categoryMap),
+              formatAmount(amount, currencySymbol),
+              `${pct}%`,
+            ];
           });
           lines.push(formatMarkdownTable(headers, rows, ['left', 'right', 'right']));
         }
@@ -155,18 +167,30 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         name: 'spending-analysis',
         description:
           'Analyze spending grouped by category, payee, or category group for a given period. Optionally compare to a prior period.',
-        inputSchema: zodInputSchema(z.object({
-          start_date: z.string().describe('Start date (YYYY-MM-DD)'),
-          end_date: z.string().describe('End date (YYYY-MM-DD)'),
-          group_by: z.enum(['category', 'payee', 'category_group']).optional().describe('How to group spending (default: category)'),
-          compare_start_date: z.string().optional().describe('Comparison period start date (YYYY-MM-DD)'),
-          compare_end_date: z.string().optional().describe('Comparison period end date (YYYY-MM-DD)'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            start_date: z.string().describe('Start date (YYYY-MM-DD)'),
+            end_date: z.string().describe('End date (YYYY-MM-DD)'),
+            group_by: z
+              .enum(['category', 'payee', 'category_group'])
+              .optional()
+              .describe('How to group spending (default: category)'),
+            compare_start_date: z
+              .string()
+              .optional()
+              .describe('Comparison period start date (YYYY-MM-DD)'),
+            compare_end_date: z
+              .string()
+              .optional()
+              .describe('Comparison period end date (YYYY-MM-DD)'),
+          }),
+        ),
       },
       handler: async (params) => {
         const startDate = str(params, 'start_date');
         const endDate = str(params, 'end_date');
-        if (!startDate || !endDate) return err('Missing required parameters: start_date and end_date');
+        if (!startDate || !endDate)
+          return err('Missing required parameters: start_date and end_date');
 
         const groupBy = str(params, 'group_by') ?? 'category';
         const compareStart = str(params, 'compare_start_date');
@@ -211,7 +235,12 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
 
         for (const tx of txRes.data) {
           // Skip parent transactions of splits (children carry the actual amounts)
-          if (tx.is_child === false && Array.isArray(tx.subtransactions) && (tx.subtransactions as unknown[]).length > 0) continue;
+          if (
+            tx.is_child === false &&
+            Array.isArray(tx.subtransactions) &&
+            (tx.subtransactions as unknown[]).length > 0
+          )
+            continue;
 
           const amount = tx.amount as number;
           if (amount >= 0) continue; // skip income
@@ -240,7 +269,12 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
           if (compTxRes.ok) {
             compareSpending = new Map<string, number>();
             for (const tx of compTxRes.data) {
-              if (tx.is_child === false && Array.isArray(tx.subtransactions) && (tx.subtransactions as unknown[]).length > 0) continue;
+              if (
+                tx.is_child === false &&
+                Array.isArray(tx.subtransactions) &&
+                (tx.subtransactions as unknown[]).length > 0
+              )
+                continue;
               const amount = tx.amount as number;
               if (amount >= 0) continue;
               const catId = tx.category as string | null;
@@ -248,7 +282,8 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
 
               let key: string;
               if (groupBy === 'payee') {
-                const payeeId = (tx.payee_name as string) || resolveName(tx.payee as string, payeeMap);
+                const payeeId =
+                  (tx.payee_name as string) || resolveName(tx.payee as string, payeeMap);
                 key = payeeId || 'Uncategorized';
               } else if (groupBy === 'category_group') {
                 const gid = catId ? catToGroup.get(catId) : undefined;
@@ -282,7 +317,8 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
           if (compareSpending) {
             const prior = compareSpending.get(name) ?? 0;
             row.push(formatAmount(prior, currencySymbol));
-            const change = prior !== 0 ? (((amount - prior) / Math.abs(prior)) * 100).toFixed(1) : 'N/A';
+            const change =
+              prior !== 0 ? (((amount - prior) / Math.abs(prior)) * 100).toFixed(1) : 'N/A';
             row.push(typeof change === 'string' && change !== 'N/A' ? `${change}%` : change);
           }
           return row;
@@ -292,7 +328,11 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         if (compareSpending) {
           const priorTotal = [...compareSpending.values()].reduce((a, b) => a + b, 0);
           totalRow.push(formatAmount(priorTotal, currencySymbol));
-          totalRow.push(priorTotal !== 0 ? `${(((totalSpent - priorTotal) / Math.abs(priorTotal)) * 100).toFixed(1)}%` : 'N/A');
+          totalRow.push(
+            priorTotal !== 0
+              ? `${(((totalSpent - priorTotal) / Math.abs(priorTotal)) * 100).toFixed(1)}%`
+              : 'N/A',
+          );
         }
         rows.push(totalRow);
 
@@ -312,9 +352,14 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         name: 'budget-variance-report',
         description:
           'Compare budgeted vs actual spending for a month. Shows per-category variance and flags overspent categories with ⚠.',
-        inputSchema: zodInputSchema(z.object({
-          month: z.string().optional().describe('Month in YYYY-MM format (defaults to current month)'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            month: z
+              .string()
+              .optional()
+              .describe('Month in YYYY-MM format (defaults to current month)'),
+          }),
+        ),
       },
       handler: async (params) => {
         const month = str(params, 'month') ?? currentMonth();
@@ -323,10 +368,7 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         if (!res.ok) return err(res.error);
 
         const budget = res.data;
-        const lines: string[] = [
-          `## Budget Variance Report: ${month}`,
-          '',
-        ];
+        const lines: string[] = [`## Budget Variance Report: ${month}`, ''];
 
         const headers = ['Category', 'Budgeted', 'Spent', 'Variance', 'Status'];
         const rows: string[][] = [];
@@ -384,9 +426,7 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         if (!accountsRes.ok) return err(accountsRes.error);
 
         const openAccounts = accountsRes.data.filter((a) => !a.closed);
-        const balances = await Promise.all(
-          openAccounts.map((a) => client.getAccountBalance(a.id)),
-        );
+        const balances = await Promise.all(openAccounts.map((a) => client.getAccountBalance(a.id)));
 
         const onBudget: Array<{ name: string; balance: number }> = [];
         const offBudget: Array<{ name: string; balance: number }> = [];
@@ -395,6 +435,7 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         for (let i = 0; i < openAccounts.length; i++) {
           const account = openAccounts[i];
           const balRes = balances[i];
+          if (!account || !balRes) continue;
           const balance = balRes.ok ? balRes.data : 0;
           totalNetWorth += balance;
 
@@ -440,10 +481,15 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         name: 'trend-analysis',
         description:
           'Analyze spending trends over multiple months with rolling averages and anomaly detection. Optionally filter by categories.',
-        inputSchema: zodInputSchema(z.object({
-          months: z.number().optional().describe('Number of months to analyze (default: 6)'),
-          categories: z.array(z.string()).optional().describe('Optional list of category IDs to filter'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            months: z.number().optional().describe('Number of months to analyze (default: 6)'),
+            categories: z
+              .array(z.string())
+              .optional()
+              .describe('Optional list of category IDs to filter'),
+          }),
+        ),
       },
       handler: async (params) => {
         const monthCount = num(params, 'months') ?? 6;
@@ -486,7 +532,12 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
 
           const catSpending = new Map<string, number>();
           for (const tx of txRes.data) {
-            if (tx.is_child === false && Array.isArray(tx.subtransactions) && (tx.subtransactions as unknown[]).length > 0) continue;
+            if (
+              tx.is_child === false &&
+              Array.isArray(tx.subtransactions) &&
+              (tx.subtransactions as unknown[]).length > 0
+            )
+              continue;
             const amount = tx.amount as number;
             if (amount >= 0) continue;
             const catId = tx.category as string | null;
@@ -553,18 +604,22 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         name: 'income-expense-timeline',
         description:
           'Show month-by-month income, expenses, net, cumulative surplus/deficit, and savings rate over a date range.',
-        inputSchema: zodInputSchema(z.object({
-          start_month: z.string().describe('Start month (YYYY-MM)'),
-          end_month: z.string().describe('End month (YYYY-MM)'),
-        })),
+        inputSchema: zodInputSchema(
+          z.object({
+            start_month: z.string().describe('Start month (YYYY-MM)'),
+            end_month: z.string().describe('End month (YYYY-MM)'),
+          }),
+        ),
       },
       handler: async (params) => {
         const startMonth = str(params, 'start_month');
         const endMonth = str(params, 'end_month');
-        if (!startMonth || !endMonth) return err('Missing required parameters: start_month and end_month');
+        if (!startMonth || !endMonth)
+          return err('Missing required parameters: start_month and end_month');
 
         const months = monthRange(startMonth, endMonth);
-        if (months.length === 0) return err('Invalid month range: start_month must be before end_month');
+        if (months.length === 0)
+          return err('Invalid month range: start_month must be before end_month');
 
         // Fetch category groups to identify income categories
         const groupsRes = await client.getCategoryGroups();
@@ -579,10 +634,7 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
           }
         }
 
-        const lines: string[] = [
-          `## Income & Expense Timeline: ${startMonth} to ${endMonth}`,
-          '',
-        ];
+        const lines: string[] = [`## Income & Expense Timeline: ${startMonth} to ${endMonth}`, ''];
 
         const headers = ['Month', 'Income', 'Expenses', 'Net', 'Cumulative', 'Savings Rate'];
         const rows: string[][] = [];
@@ -600,7 +652,12 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
           let expenses = 0;
 
           for (const tx of txRes.data) {
-            if (tx.is_child === false && Array.isArray(tx.subtransactions) && (tx.subtransactions as unknown[]).length > 0) continue;
+            if (
+              tx.is_child === false &&
+              Array.isArray(tx.subtransactions) &&
+              (tx.subtransactions as unknown[]).length > 0
+            )
+              continue;
             const amount = tx.amount as number;
             const catId = tx.category as string | null;
 
@@ -626,7 +683,9 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
           ]);
         }
 
-        lines.push(formatMarkdownTable(headers, rows, ['left', 'right', 'right', 'right', 'right', 'right']));
+        lines.push(
+          formatMarkdownTable(headers, rows, ['left', 'right', 'right', 'right', 'right', 'right']),
+        );
 
         return ok(lines.join('\n'));
       },

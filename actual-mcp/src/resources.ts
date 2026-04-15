@@ -1,5 +1,8 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { ListResourcesRequestSchema, ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 import type { ActualClient } from './client.js';
 import { formatAmount, formatMarkdownTable } from './format.js';
 
@@ -45,11 +48,12 @@ async function readAccounts(client: ActualClient, currencySymbol: string): Promi
     rows.push([account.name, type, status, balance]);
   }
 
-  const table = formatMarkdownTable(
-    ['Account', 'Type', 'Status', 'Balance'],
-    rows,
-    ['left', 'left', 'left', 'right'],
-  );
+  const table = formatMarkdownTable(['Account', 'Type', 'Status', 'Balance'], rows, [
+    'left',
+    'left',
+    'left',
+    'right',
+  ]);
 
   return `# Accounts\n\n${table}`;
 }
@@ -91,8 +95,9 @@ function readBudgetSettings(currencySymbol: string): string {
   return `# Budget Settings\n\n- **Currency Symbol:** ${currencySymbol}`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-deprecated
 export function setupResources(server: Server, client: ActualClient, currencySymbol: string): void {
-  server.setRequestHandler(ListResourcesRequestSchema, async () => {
+  server.setRequestHandler(ListResourcesRequestSchema, () => {
     return { resources: RESOURCES };
   });
 

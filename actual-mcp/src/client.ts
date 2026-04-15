@@ -4,9 +4,7 @@ import pRetry, { AbortError } from 'p-retry';
 
 // --- Result type ---
 
-export type ApiResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: string };
+export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
 // --- Response schemas ---
 
@@ -148,6 +146,7 @@ class TtlCache {
     this.defaultTtlMs = defaultTtlMs;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   get<T>(key: string): T | undefined {
     const entry = this.cache.get(key);
     if (!entry) return undefined;
@@ -158,6 +157,7 @@ class TtlCache {
     return entry.data as T;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   set<T>(key: string, data: T, ttlMs?: number): void {
     this.cache.set(key, {
       data,
@@ -181,8 +181,16 @@ export interface ClientConfig {
   retries?: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function createClient(config: ClientConfig) {
-  const { baseUrl, apiKey, budgetSyncId, timeoutMs = 10_000, cacheTtlMs = 60_000, retries = 3 } = config;
+  const {
+    baseUrl,
+    apiKey,
+    budgetSyncId,
+    timeoutMs = 10_000,
+    cacheTtlMs = 60_000,
+    retries = 3,
+  } = config;
   const logger = pino({ name: 'http-client', level: 'info' });
   const cache = new TtlCache(cacheTtlMs);
   const budgetBase = `${baseUrl}/v1/budgets/${budgetSyncId}`;
@@ -229,8 +237,8 @@ export function createClient(config: ClientConfig) {
             if (!response.ok) {
               let errorMsg: string;
               try {
-                const errorBody = await response.json();
-                errorMsg = (errorBody as { error?: string }).error || response.statusText;
+                const errorBody: unknown = await response.json();
+                errorMsg = (errorBody as { error?: string }).error ?? response.statusText;
               } catch {
                 errorMsg = response.statusText;
               }
@@ -244,8 +252,8 @@ export function createClient(config: ClientConfig) {
               throw new AbortError(`HTTP ${response.status}: ${errorMsg}`);
             }
 
-            const json = await response.json();
-            const data = (json as { data?: unknown }).data ?? json;
+            const json: unknown = await response.json();
+            const data: unknown = (json as { data?: unknown }).data ?? json;
 
             if (options?.schema) {
               const parsed = options.schema.safeParse(data);
@@ -253,7 +261,7 @@ export function createClient(config: ClientConfig) {
                 logger.warn({ url, issues: parsed.error.issues }, 'Response validation failed');
                 return { ok: true as const, data: data as T };
               }
-              if (method === 'GET' && options?.cacheKey) cache.set(options.cacheKey, parsed.data);
+              if (method === 'GET' && options.cacheKey) cache.set(options.cacheKey, parsed.data);
               return { ok: true as const, data: parsed.data };
             }
 
@@ -273,7 +281,11 @@ export function createClient(config: ClientConfig) {
           retries,
           onFailedAttempt: (error) => {
             logger.warn(
-              { attempt: error.attemptNumber, retriesLeft: error.retriesLeft, error: error.message },
+              {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              },
               'Retrying request',
             );
           },
@@ -294,63 +306,143 @@ export function createClient(config: ClientConfig) {
     clearCache: () => cache.clear(),
 
     // Accounts
-    getAccounts: () => request<Account[]>('GET', `${budgetBase}/accounts`, { schema: z.array(AccountSchema), cacheKey: 'accounts' }),
-    getAccountBalance: (accountId: string, cutoffDate?: string) => request<number>('GET', `${budgetBase}/accounts/${accountId}/balance`, { query: { cutoff_date: cutoffDate } }),
+    getAccounts: () =>
+      request<Account[]>('GET', `${budgetBase}/accounts`, {
+        schema: z.array(AccountSchema),
+        cacheKey: 'accounts',
+      }),
+    getAccountBalance: (accountId: string, cutoffDate?: string) =>
+      request<number>('GET', `${budgetBase}/accounts/${accountId}/balance`, {
+        query: { cutoff_date: cutoffDate },
+      }),
 
     // Transactions
-    getTransactions: (accountId: string, sinceDate: string, untilDate?: string) => request<Transaction[]>('GET', `${budgetBase}/accounts/${accountId}/transactions`, { query: { since_date: sinceDate, until_date: untilDate }, schema: z.array(TransactionSchema) }),
-    createTransaction: (accountId: string, transaction: Record<string, unknown>, opts?: { learnCategories?: boolean; runTransfers?: boolean }) => request<string>('POST', `${budgetBase}/accounts/${accountId}/transactions`, { body: { transaction, learnCategories: opts?.learnCategories ?? false, runTransfers: opts?.runTransfers ?? false } }),
-    updateTransaction: (transactionId: string, fields: Record<string, unknown>) => request<string>('PATCH', `${budgetBase}/transactions/${transactionId}`, { body: { transaction: fields } }),
-    deleteTransaction: (transactionId: string) => request<string>('DELETE', `${budgetBase}/transactions/${transactionId}`),
-    importTransactions: (accountId: string, transactions: Record<string, unknown>[]) => request<{ added: string[]; updated: string[] }>('POST', `${budgetBase}/accounts/${accountId}/transactions/import`, { body: { transactions } }),
+    getTransactions: (accountId: string, sinceDate: string, untilDate?: string) =>
+      request<Transaction[]>('GET', `${budgetBase}/accounts/${accountId}/transactions`, {
+        query: { since_date: sinceDate, until_date: untilDate },
+        schema: z.array(TransactionSchema),
+      }),
+    createTransaction: (
+      accountId: string,
+      transaction: Record<string, unknown>,
+      opts?: { learnCategories?: boolean; runTransfers?: boolean },
+    ) =>
+      request<string>('POST', `${budgetBase}/accounts/${accountId}/transactions`, {
+        body: {
+          transaction,
+          learnCategories: opts?.learnCategories ?? false,
+          runTransfers: opts?.runTransfers ?? false,
+        },
+      }),
+    updateTransaction: (transactionId: string, fields: Record<string, unknown>) =>
+      request<string>('PATCH', `${budgetBase}/transactions/${transactionId}`, {
+        body: { transaction: fields },
+      }),
+    deleteTransaction: (transactionId: string) =>
+      request<string>('DELETE', `${budgetBase}/transactions/${transactionId}`),
+    importTransactions: (accountId: string, transactions: Record<string, unknown>[]) =>
+      request<{ added: string[]; updated: string[] }>(
+        'POST',
+        `${budgetBase}/accounts/${accountId}/transactions/import`,
+        { body: { transactions } },
+      ),
 
     // Categories
-    getCategories: () => request<Category[]>('GET', `${budgetBase}/categories`, { schema: z.array(CategorySchema), cacheKey: 'categories' }),
-    getCategoryGroups: () => request<CategoryGroup[]>('GET', `${budgetBase}/categorygroups`, { schema: z.array(CategoryGroupSchema), cacheKey: 'categoryGroups' }),
-    createCategory: (category: { name: string; group_id: string; is_income?: boolean }) => request<string>('POST', `${budgetBase}/categories`, { body: { category } }),
-    updateCategory: (categoryId: string, fields: Record<string, unknown>) => request<string>('PATCH', `${budgetBase}/categories/${categoryId}`, { body: { category: fields } }),
-    deleteCategory: (categoryId: string, transferCategoryId?: string) => request<string>('DELETE', `${budgetBase}/categories/${categoryId}`, { query: { transfer_category_id: transferCategoryId } }),
-    createCategoryGroup: (group: { name: string; is_income?: boolean }) => request<string>('POST', `${budgetBase}/categorygroups`, { body: { category_group: group } }),
-    updateCategoryGroup: (groupId: string, fields: Record<string, unknown>) => request<string>('PATCH', `${budgetBase}/categorygroups/${groupId}`, { body: { category_group: fields } }),
-    deleteCategoryGroup: (groupId: string, transferCategoryId?: string) => request<string>('DELETE', `${budgetBase}/categorygroups/${groupId}`, { query: { transfer_category_id: transferCategoryId } }),
+    getCategories: () =>
+      request<Category[]>('GET', `${budgetBase}/categories`, {
+        schema: z.array(CategorySchema),
+        cacheKey: 'categories',
+      }),
+    getCategoryGroups: () =>
+      request<CategoryGroup[]>('GET', `${budgetBase}/categorygroups`, {
+        schema: z.array(CategoryGroupSchema),
+        cacheKey: 'categoryGroups',
+      }),
+    createCategory: (category: { name: string; group_id: string; is_income?: boolean }) =>
+      request<string>('POST', `${budgetBase}/categories`, { body: { category } }),
+    updateCategory: (categoryId: string, fields: Record<string, unknown>) =>
+      request<string>('PATCH', `${budgetBase}/categories/${categoryId}`, {
+        body: { category: fields },
+      }),
+    deleteCategory: (categoryId: string, transferCategoryId?: string) =>
+      request<string>('DELETE', `${budgetBase}/categories/${categoryId}`, {
+        query: { transfer_category_id: transferCategoryId },
+      }),
+    createCategoryGroup: (group: { name: string; is_income?: boolean }) =>
+      request<string>('POST', `${budgetBase}/categorygroups`, { body: { category_group: group } }),
+    updateCategoryGroup: (groupId: string, fields: Record<string, unknown>) =>
+      request<string>('PATCH', `${budgetBase}/categorygroups/${groupId}`, {
+        body: { category_group: fields },
+      }),
+    deleteCategoryGroup: (groupId: string, transferCategoryId?: string) =>
+      request<string>('DELETE', `${budgetBase}/categorygroups/${groupId}`, {
+        query: { transfer_category_id: transferCategoryId },
+      }),
 
     // Payees
-    getPayees: () => request<Payee[]>('GET', `${budgetBase}/payees`, { schema: z.array(PayeeSchema), cacheKey: 'payees' }),
-    createPayee: (payee: { name: string }) => request<string>('POST', `${budgetBase}/payees`, { body: { payee } }),
-    updatePayee: (payeeId: string, fields: Record<string, unknown>) => request<string>('PATCH', `${budgetBase}/payees/${payeeId}`, { body: { payee: fields } }),
+    getPayees: () =>
+      request<Payee[]>('GET', `${budgetBase}/payees`, {
+        schema: z.array(PayeeSchema),
+        cacheKey: 'payees',
+      }),
+    createPayee: (payee: { name: string }) =>
+      request<string>('POST', `${budgetBase}/payees`, { body: { payee } }),
+    updatePayee: (payeeId: string, fields: Record<string, unknown>) =>
+      request<string>('PATCH', `${budgetBase}/payees/${payeeId}`, { body: { payee: fields } }),
     deletePayee: (payeeId: string) => request<string>('DELETE', `${budgetBase}/payees/${payeeId}`),
-    mergePayees: (targetId: string, mergeIds: string[]) => request<string>('POST', `${budgetBase}/payees/merge`, { body: { targetId, mergeIds } }),
+    mergePayees: (targetId: string, mergeIds: string[]) =>
+      request<string>('POST', `${budgetBase}/payees/merge`, { body: { targetId, mergeIds } }),
 
     // Budget months
     getBudgetMonths: () => request<string[]>('GET', `${budgetBase}/months`),
-    getBudgetMonth: (month: string) => request<BudgetMonth>('GET', `${budgetBase}/months/${month}`, { schema: BudgetMonthSchema }),
-    setBudgetAmount: (month: string, categoryId: string, budgeted: number, carryover?: boolean) => request<string>('PATCH', `${budgetBase}/months/${month}/categories/${categoryId}`, { body: { category: { budgeted, ...(carryover !== undefined && { carryover }) } } }),
-    transferBudget: (month: string, fromCategoryId: string, toCategoryId: string, amount: number) => request<string>('POST', `${budgetBase}/months/${month}/categorytransfers`, { body: { categorytransfer: { fromCategoryId, toCategoryId, amount } } }),
+    getBudgetMonth: (month: string) =>
+      request<BudgetMonth>('GET', `${budgetBase}/months/${month}`, { schema: BudgetMonthSchema }),
+    setBudgetAmount: (month: string, categoryId: string, budgeted: number, carryover?: boolean) =>
+      request<string>('PATCH', `${budgetBase}/months/${month}/categories/${categoryId}`, {
+        body: { category: { budgeted, ...(carryover !== undefined && { carryover }) } },
+      }),
+    transferBudget: (month: string, fromCategoryId: string, toCategoryId: string, amount: number) =>
+      request<string>('POST', `${budgetBase}/months/${month}/categorytransfers`, {
+        body: { categorytransfer: { fromCategoryId, toCategoryId, amount } },
+      }),
 
     // Schedules
-    getSchedules: () => request<Schedule[]>('GET', `${budgetBase}/schedules`, { schema: z.array(ScheduleSchema) }),
-    createSchedule: (schedule: Record<string, unknown>) => request<string>('POST', `${budgetBase}/schedules`, { body: { schedule } }),
-    updateSchedule: (scheduleId: string, fields: Record<string, unknown>) => request<string>('PATCH', `${budgetBase}/schedules/${scheduleId}`, { body: { schedule: fields } }),
-    deleteSchedule: (scheduleId: string) => request<string>('DELETE', `${budgetBase}/schedules/${scheduleId}`),
+    getSchedules: () =>
+      request<Schedule[]>('GET', `${budgetBase}/schedules`, { schema: z.array(ScheduleSchema) }),
+    createSchedule: (schedule: Record<string, unknown>) =>
+      request<string>('POST', `${budgetBase}/schedules`, { body: { schedule } }),
+    updateSchedule: (scheduleId: string, fields: Record<string, unknown>) =>
+      request<string>('PATCH', `${budgetBase}/schedules/${scheduleId}`, {
+        body: { schedule: fields },
+      }),
+    deleteSchedule: (scheduleId: string) =>
+      request<string>('DELETE', `${budgetBase}/schedules/${scheduleId}`),
 
     // Rules
     getRules: () => request<Rule[]>('GET', `${budgetBase}/rules`, { schema: z.array(RuleSchema) }),
-    createRule: (rule: Record<string, unknown>) => request<Rule>('POST', `${budgetBase}/rules`, { body: { rule } }),
-    updateRule: (ruleId: string, fields: Record<string, unknown>) => request<Rule>('PATCH', `${budgetBase}/rules/${ruleId}`, { body: { rule: fields } }),
+    createRule: (rule: Record<string, unknown>) =>
+      request<Rule>('POST', `${budgetBase}/rules`, { body: { rule } }),
+    updateRule: (ruleId: string, fields: Record<string, unknown>) =>
+      request<Rule>('PATCH', `${budgetBase}/rules/${ruleId}`, { body: { rule: fields } }),
     deleteRule: (ruleId: string) => request<string>('DELETE', `${budgetBase}/rules/${ruleId}`),
 
     // Notes
-    getNotes: (type: 'category' | 'account' | 'budgetmonth', id: string) => request<string>('GET', `${budgetBase}/notes/${type}/${id}`),
-    setNotes: (type: 'category' | 'account' | 'budgetmonth', id: string, notes: string) => request<string>('PUT', `${budgetBase}/notes/${type}/${id}`, { body: { data: notes } }),
-    deleteNotes: (type: 'category' | 'account' | 'budgetmonth', id: string) => request<string>('DELETE', `${budgetBase}/notes/${type}/${id}`),
+    getNotes: (type: 'category' | 'account' | 'budgetmonth', id: string) =>
+      request<string>('GET', `${budgetBase}/notes/${type}/${id}`),
+    setNotes: (type: 'category' | 'account' | 'budgetmonth', id: string, notes: string) =>
+      request<string>('PUT', `${budgetBase}/notes/${type}/${id}`, { body: { data: notes } }),
+    deleteNotes: (type: 'category' | 'account' | 'budgetmonth', id: string) =>
+      request<string>('DELETE', `${budgetBase}/notes/${type}/${id}`),
 
     // Bank sync
-    runBankSync: (accountId?: string) => accountId
-      ? request<string>('POST', `${budgetBase}/accounts/${accountId}/banksync`)
-      : request<string>('POST', `${budgetBase}/accounts/banksync`),
+    runBankSync: (accountId?: string) =>
+      accountId
+        ? request<string>('POST', `${budgetBase}/accounts/${accountId}/banksync`)
+        : request<string>('POST', `${budgetBase}/accounts/banksync`),
 
     // Query
-    runQuery: (query: Record<string, unknown>) => request<unknown>('POST', `${budgetBase}/run-query`, { body: { ActualQLquery: query } }),
+    runQuery: (query: Record<string, unknown>) =>
+      request<unknown>('POST', `${budgetBase}/run-query`, { body: { ActualQLquery: query } }),
 
     // Settings
     getBudgets: () => request<Array<{ id: string; name: string }>>('GET', `${baseUrl}/v1/budgets`),
@@ -358,7 +450,10 @@ export function createClient(config: ClientConfig) {
 
     // Health
     checkHealth: async (): Promise<boolean> => {
-      const result = await request<{ version: string }>('GET', `${baseUrl}/v1/actualhttpapiversion`);
+      const result = await request<{ version: string }>(
+        'GET',
+        `${baseUrl}/v1/actualhttpapiversion`,
+      );
       return result.ok;
     },
   };

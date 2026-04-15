@@ -2,7 +2,7 @@ import { z } from 'zod';
 import 'dotenv/config';
 
 const ConfigSchema = z.object({
-  actualHttpApiUrl: z.string().url(),
+  actualHttpApiUrl: z.url(),
   actualHttpApiKey: z.string().min(1),
   budgetSyncId: z.string().min(1),
   mcpAuthToken: z.string().min(1).optional(),
@@ -27,9 +27,7 @@ export function loadConfig(): Config {
   });
 
   if (!result.success) {
-    const errors = result.error.issues
-      .map((i) => `  ${i.path.join('.')}: ${i.message}`)
-      .join('\n');
+    const errors = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid configuration:\n${errors}`);
   }
 

@@ -1,5 +1,8 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { ListPromptsRequestSchema, GetPromptRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 
 const PROMPTS = [
   {
@@ -316,12 +319,13 @@ Use this reference to construct accurate ActualQL queries with the run-query too
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-deprecated
 export function setupPrompts(server: Server): void {
-  server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+  server.setRequestHandler(ListPromptsRequestSchema, () => ({
     prompts: PROMPTS,
   }));
 
-  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  server.setRequestHandler(GetPromptRequestSchema, (request) => {
     const { name, arguments: args } = request.params;
     return getPromptMessages(name, args);
   });

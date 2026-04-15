@@ -102,23 +102,55 @@ Return a single aggregate value without grouping:
 }
 \`\`\`
 `,
-      inputSchema: zodInputSchema(z.object({
-        table: z.enum(['transactions', 'accounts', 'categories', 'payees', 'schedules']).describe('The table to query'),
-        filter: z.looseObject({}).optional().describe('Filter conditions using ActualQL operators ($eq, $lt, $gt, $lte, $gte, $ne, $oneof, $regex, $like, $notlike, $and, $or)'),
-        select: z.array(z.any()).optional().describe('Fields or aggregate expressions to select. Use strings for plain fields, objects for aliases/aggregates.'),
-        groupBy: z.array(z.any()).optional().describe('Fields to group by. Use dot notation for joins (e.g. category.name)'),
-        orderBy: z.array(z.looseObject({})).optional().describe('Sort order. Each entry is an object with field name as key and "asc"/"desc" as value.'),
-        calculate: z.looseObject({}).optional().describe('Single aggregate expression that returns a scalar value (e.g. { "$sum": "$amount" })'),
-        limit: z.number().optional().describe('Maximum number of rows to return'),
-        offset: z.number().optional().describe('Number of rows to skip (for pagination)'),
-        options: z.object({
-          splits: z.enum(['inline', 'grouped', 'all']).optional(),
-        }).optional().describe('Additional options. Use { "splits": "inline" | "grouped" | "all" } to control split transaction handling.'),
-      })),
+      inputSchema: zodInputSchema(
+        z.object({
+          table: z
+            .enum(['transactions', 'accounts', 'categories', 'payees', 'schedules'])
+            .describe('The table to query'),
+          filter: z
+            .looseObject({})
+            .optional()
+            .describe(
+              'Filter conditions using ActualQL operators ($eq, $lt, $gt, $lte, $gte, $ne, $oneof, $regex, $like, $notlike, $and, $or)',
+            ),
+          select: z
+            .array(z.any())
+            .optional()
+            .describe(
+              'Fields or aggregate expressions to select. Use strings for plain fields, objects for aliases/aggregates.',
+            ),
+          groupBy: z
+            .array(z.any())
+            .optional()
+            .describe('Fields to group by. Use dot notation for joins (e.g. category.name)'),
+          orderBy: z
+            .array(z.looseObject({}))
+            .optional()
+            .describe(
+              'Sort order. Each entry is an object with field name as key and "asc"/"desc" as value.',
+            ),
+          calculate: z
+            .looseObject({})
+            .optional()
+            .describe(
+              'Single aggregate expression that returns a scalar value (e.g. { "$sum": "$amount" })',
+            ),
+          limit: z.number().optional().describe('Maximum number of rows to return'),
+          offset: z.number().optional().describe('Number of rows to skip (for pagination)'),
+          options: z
+            .object({
+              splits: z.enum(['inline', 'grouped', 'all']).optional(),
+            })
+            .optional()
+            .describe(
+              'Additional options. Use { "splits": "inline" | "grouped" | "all" } to control split transaction handling.',
+            ),
+        }),
+      ),
     },
 
     handler: async (params) => {
-      const query = params as Record<string, unknown>;
+      const query = params;
       const res = await client.runQuery(query);
 
       if (!res.ok) return err(res.error);
@@ -147,7 +179,10 @@ Return a single aggregate value without grouping:
             if (typeof val === 'number' && isAmountField(h)) {
               return formatAmount(val, currencySymbol);
             }
-            return val == null ? '' : String(val);
+            if (val == null) return '';
+            return typeof val === 'object'
+              ? JSON.stringify(val)
+              : String(val as string | number | boolean);
           });
         });
 

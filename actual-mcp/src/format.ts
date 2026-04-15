@@ -13,24 +13,27 @@ export function formatMarkdownTable(
   alignments?: ('left' | 'right' | 'center')[],
 ): string {
   const colWidths = headers.map((h, i) =>
-    Math.max(h.length, ...rows.map((r) => (r[i] || '').length)),
+    Math.max(h.length, ...rows.map((r) => (r[i] ?? '').length)),
   );
 
-  const pad = (str: string, width: number, align?: 'left' | 'right' | 'center') => {
+  const pad = (str: string, width: number, align?: 'left' | 'right' | 'center'): string => {
     if (align === 'right') return str.padStart(width);
     return str.padEnd(width);
   };
 
   const headerLine = `| ${headers.map((h, i) => pad(h, colWidths[i], alignments?.[i])).join(' | ')} |`;
-  const separatorLine = `|${colWidths.map((w, i) => {
-    const align = alignments?.[i];
-    if (align === 'right') return '-'.repeat(w + 1) + ':';
-    if (align === 'center') return ':' + '-'.repeat(w) + ':';
-    return '-'.repeat(w + 2);
-  }).join('|')}|`;
+  const separatorLine = `|${colWidths
+    .map((w, i) => {
+      const align = alignments?.[i];
+      if (align === 'right') return '-'.repeat(w + 1) + ':';
+      if (align === 'center') return ':' + '-'.repeat(w) + ':';
+      return '-'.repeat(w + 2);
+    })
+    .join('|')}|`;
 
   const dataLines = rows.map(
-    (row) => `| ${row.map((cell, i) => pad(cell || '', colWidths[i], alignments?.[i])).join(' | ')} |`,
+    (row) =>
+      `| ${row.map((cell, i) => pad(cell || '', colWidths[i], alignments?.[i])).join(' | ')} |`,
   );
 
   return [headerLine, separatorLine, ...dataLines].join('\n');
@@ -45,7 +48,10 @@ interface TransactionRow {
   subtransactions: Array<{ payee: string; category: string; amount: number; notes: string }>;
 }
 
-export function formatTransactionTable(transactions: TransactionRow[], currencySymbol: string): string {
+export function formatTransactionTable(
+  transactions: TransactionRow[],
+  currencySymbol: string,
+): string {
   const headers = ['Date', 'Payee', 'Category', 'Amount', 'Notes'];
   const rows: string[][] = [];
 
@@ -61,7 +67,13 @@ export function formatTransactionTable(transactions: TransactionRow[], currencyS
     tx.subtransactions.forEach((sub, i) => {
       const isLast = i === tx.subtransactions.length - 1;
       const prefix = isLast ? ' └─' : ' ├─';
-      rows.push(['', `${prefix} ${sub.payee}`, sub.category, formatAmount(sub.amount, currencySymbol), sub.notes || '']);
+      rows.push([
+        '',
+        `${prefix} ${sub.payee}`,
+        sub.category,
+        formatAmount(sub.amount, currencySymbol),
+        sub.notes || '',
+      ]);
     });
   }
 

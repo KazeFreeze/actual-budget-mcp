@@ -2,7 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { IncomingMessage, ServerResponse } from 'node:http';
 
 describe('createAuthMiddleware', () => {
-  function mockReqRes(authHeader?: string) {
+  function mockReqRes(authHeader?: string): {
+    req: IncomingMessage;
+    res: ServerResponse;
+    next: ReturnType<typeof vi.fn>;
+  } {
     const req = { headers: { authorization: authHeader } } as unknown as IncomingMessage;
     const res = {
       writeHead: vi.fn(),
@@ -20,6 +24,7 @@ describe('createAuthMiddleware', () => {
     middleware(req, res, next);
 
     expect(next).toHaveBeenCalled();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.writeHead).not.toHaveBeenCalled();
   });
 
@@ -31,6 +36,7 @@ describe('createAuthMiddleware', () => {
     middleware(req, res, next);
 
     expect(next).not.toHaveBeenCalled();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.writeHead).toHaveBeenCalledWith(401, expect.any(Object));
   });
 
@@ -42,6 +48,7 @@ describe('createAuthMiddleware', () => {
     middleware(req, res, next);
 
     expect(next).not.toHaveBeenCalled();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.writeHead).toHaveBeenCalledWith(401, expect.any(Object));
   });
 
@@ -53,6 +60,7 @@ describe('createAuthMiddleware', () => {
     middleware(req, res, next);
 
     expect(next).not.toHaveBeenCalled();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.writeHead).toHaveBeenCalledWith(403, expect.any(Object));
   });
 
@@ -64,6 +72,7 @@ describe('createAuthMiddleware', () => {
     middleware(req, res, next);
 
     expect(next).not.toHaveBeenCalled();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.writeHead).toHaveBeenCalledWith(403, expect.any(Object));
   });
 });
