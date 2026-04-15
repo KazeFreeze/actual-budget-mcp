@@ -1,0 +1,55 @@
+services:
+  actual-budget:
+    image: actualbudget/actual-server:latest
+    ports:
+      - "5006:5006"
+    volumes:
+      - actual-data:/data
+    networks:
+      - actual-network
+
+  actual-http-api:
+    image: jhonderson/actual-http-api:latest
+    environment:
+      - ACTUAL_SERVER_URL=http://actual-budget:5006
+      - ACTUAL_SERVER_PASSWORD=${ACTUAL_SERVER_PASSWORD}
+      - API_KEY=${API_KEY}
+    depends_on:
+      - actual-budget
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5007/v1/actualhttpapiversion"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - actual-network
+
+  actual-mcp:
+    build: ../
+    ports:
+      - "3001:3001"
+    environment:
+      - ACTUAL_HTTP_API_URL=http://actual-http-api:5007
+      - ACTUAL_HTTP_API_KEY=${API_KEY}
+      - ACTUAL_BUDGET_SYNC_ID=${ACTUAL_BUDGET_SYNC_ID}
+      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN}
+      - MCP_TRANSPORT=sse
+      - MCP_PORT=3001
+      - LOG_LEVEL=info
+    depends_on:
+      actual-http-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - actual-network
+
+volumes:
+  actual-data:
+
+networks:
+  actual-network:
+    driver: bridge
