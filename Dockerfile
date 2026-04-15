@@ -16,4 +16,4 @@ COPY --from=builder /app/build ./build
 USER node
 EXPOSE 3001
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "build/index.js"]
+CMD ["node", "build/src/index.js"]

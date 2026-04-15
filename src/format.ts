@@ -21,7 +21,7 @@ export function formatMarkdownTable(
     return str.padEnd(width);
   };
 
-  const headerLine = `| ${headers.map((h, i) => pad(h, colWidths[i], alignments?.[i])).join(' | ')} |`;
+  const headerLine = `| ${headers.map((h, i) => pad(h, colWidths[i] ?? 0, alignments?.[i])).join(' | ')} |`;
   const separatorLine = `|${colWidths
     .map((w, i) => {
       const align = alignments?.[i];
@@ -33,7 +33,7 @@ export function formatMarkdownTable(
 
   const dataLines = rows.map(
     (row) =>
-      `| ${row.map((cell, i) => pad(cell || '', colWidths[i], alignments?.[i])).join(' | ')} |`,
+      `| ${row.map((cell, i) => pad(cell || '', colWidths[i] ?? 0, alignments?.[i])).join(' | ')} |`,
   );
 
   return [headerLine, separatorLine, ...dataLines].join('\n');

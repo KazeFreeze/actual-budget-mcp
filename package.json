@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "description": "MCP server for Actual Budget via actual-http-api proxy",
   "type": "module",
-  "main": "build/index.js",
+  "main": "build/src/index.js",
   "bin": {
-    "actual-budget-mcp": "build/index.js"
+    "actual-budget-mcp": "build/src/index.js"
   },
   "scripts": {
-    "build": "tsc",
-    "start": "node build/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node build/src/index.js",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",

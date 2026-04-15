@@ -21,7 +21,7 @@ describe('createAuthMiddleware', () => {
     const middleware = createAuthMiddleware('my-secret-token');
     const { req, res, next } = mockReqRes('Bearer my-secret-token');
 
-    middleware(req, res, next);
+    middleware(req, res, next as () => void);
 
     expect(next).toHaveBeenCalled();
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -33,7 +33,7 @@ describe('createAuthMiddleware', () => {
     const middleware = createAuthMiddleware('my-secret-token');
     const { req, res, next } = mockReqRes(undefined);
 
-    middleware(req, res, next);
+    middleware(req, res, next as () => void);
 
     expect(next).not.toHaveBeenCalled();
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -45,7 +45,7 @@ describe('createAuthMiddleware', () => {
     const middleware = createAuthMiddleware('my-secret-token');
     const { req, res, next } = mockReqRes('Basic dXNlcjpwYXNz');
 
-    middleware(req, res, next);
+    middleware(req, res, next as () => void);
 
     expect(next).not.toHaveBeenCalled();
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -57,7 +57,7 @@ describe('createAuthMiddleware', () => {
     const middleware = createAuthMiddleware('my-secret-token');
     const { req, res, next } = mockReqRes('Bearer wrong-token');
 
-    middleware(req, res, next);
+    middleware(req, res, next as () => void);
 
     expect(next).not.toHaveBeenCalled();
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -69,7 +69,7 @@ describe('createAuthMiddleware', () => {
     const middleware = createAuthMiddleware('my-secret-token');
     const { req, res, next } = mockReqRes('Bearer x');
 
-    middleware(req, res, next);
+    middleware(req, res, next as () => void);
 
     expect(next).not.toHaveBeenCalled();
     // eslint-disable-next-line @typescript-eslint/unbound-method

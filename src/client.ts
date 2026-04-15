@@ -284,7 +284,7 @@ export function createClient(config: ClientConfig) {
               {
                 attempt: error.attemptNumber,
                 retriesLeft: error.retriesLeft,
-                error: error.message,
+                error: error instanceof Error ? error.message : 'Unknown error',
               },
               'Retrying request',
             );
