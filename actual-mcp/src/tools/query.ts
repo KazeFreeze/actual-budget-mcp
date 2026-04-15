@@ -1,36 +1,7 @@
+import { z } from 'zod';
 import type { ActualClient } from '../client.js';
 import { formatAmount, formatMarkdownTable } from '../format.js';
-
-// --- Types ---
-
-interface ToolContent {
-  type: 'text';
-  text: string;
-}
-
-interface ToolResult {
-  content: ToolContent[];
-  isError?: boolean;
-}
-
-interface ToolDefinition {
-  schema: {
-    name: string;
-    description: string;
-    inputSchema: Record<string, unknown>;
-  };
-  handler: (params: Record<string, unknown>) => Promise<ToolResult>;
-}
-
-// --- Helpers ---
-
-function ok(text: string): ToolResult {
-  return { content: [{ type: 'text', text }] };
-}
-
-function err(text: string): ToolResult {
-  return { content: [{ type: 'text', text }], isError: true };
-}
+import { type ToolDefinition, ok, err, zodInputSchema } from './shared.js';
 
 const AMOUNT_FIELD_PATTERNS = ['amount', 'total', 'spent', 'budgeted', 'balance', 'sum'];
 
@@ -131,58 +102,19 @@ Return a single aggregate value without grouping:
 }
 \`\`\`
 `,
-      inputSchema: {
-        type: 'object',
-        properties: {
-          table: {
-            type: 'string',
-            enum: ['transactions', 'accounts', 'categories', 'payees', 'schedules'],
-            description: 'The table to query',
-          },
-          filter: {
-            type: 'object',
-            description: 'Filter conditions using ActualQL operators ($eq, $lt, $gt, $lte, $gte, $ne, $oneof, $regex, $like, $notlike, $and, $or)',
-          },
-          select: {
-            type: 'array',
-            description: 'Fields or aggregate expressions to select. Use strings for plain fields, objects for aliases/aggregates.',
-            items: {},
-          },
-          groupBy: {
-            type: 'array',
-            description: 'Fields to group by. Use dot notation for joins (e.g. category.name)',
-            items: {},
-          },
-          orderBy: {
-            type: 'array',
-            description: 'Sort order. Each entry is an object with field name as key and "asc"/"desc" as value.',
-            items: { type: 'object' },
-          },
-          calculate: {
-            type: 'object',
-            description: 'Single aggregate expression that returns a scalar value (e.g. { "$sum": "$amount" })',
-          },
-          limit: {
-            type: 'number',
-            description: 'Maximum number of rows to return',
-          },
-          offset: {
-            type: 'number',
-            description: 'Number of rows to skip (for pagination)',
-          },
-          options: {
-            type: 'object',
-            description: 'Additional options. Use { "splits": "inline" | "grouped" | "all" } to control split transaction handling.',
-            properties: {
-              splits: {
-                type: 'string',
-                enum: ['inline', 'grouped', 'all'],
-              },
-            },
-          },
-        },
-        required: ['table'],
-      },
+      inputSchema: zodInputSchema(z.object({
+        table: z.enum(['transactions', 'accounts', 'categories', 'payees', 'schedules']).describe('The table to query'),
+        filter: z.looseObject({}).optional().describe('Filter conditions using ActualQL operators ($eq, $lt, $gt, $lte, $gte, $ne, $oneof, $regex, $like, $notlike, $and, $or)'),
+        select: z.array(z.any()).optional().describe('Fields or aggregate expressions to select. Use strings for plain fields, objects for aliases/aggregates.'),
+        groupBy: z.array(z.any()).optional().describe('Fields to group by. Use dot notation for joins (e.g. category.name)'),
+        orderBy: z.array(z.looseObject({})).optional().describe('Sort order. Each entry is an object with field name as key and "asc"/"desc" as value.'),
+        calculate: z.looseObject({}).optional().describe('Single aggregate expression that returns a scalar value (e.g. { "$sum": "$amount" })'),
+        limit: z.number().optional().describe('Maximum number of rows to return'),
+        offset: z.number().optional().describe('Number of rows to skip (for pagination)'),
+        options: z.object({
+          splits: z.enum(['inline', 'grouped', 'all']).optional(),
+        }).optional().describe('Additional options. Use { "splits": "inline" | "grouped" | "all" } to control split transaction handling.'),
+      })),
     },
 
     handler: async (params) => {

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { ActualClient } from '../client.js';
 import {
   formatAmount,
@@ -5,47 +6,7 @@ import {
   buildNameMap,
   resolveName,
 } from '../format.js';
-
-// --- Types ---
-
-interface ToolContent {
-  type: 'text';
-  text: string;
-}
-
-interface ToolResult {
-  content: ToolContent[];
-  isError?: boolean;
-}
-
-interface ToolDefinition {
-  schema: {
-    name: string;
-    description: string;
-    inputSchema: Record<string, unknown>;
-  };
-  handler: (params: Record<string, unknown>) => Promise<ToolResult>;
-}
-
-// --- Helpers ---
-
-function ok(text: string): ToolResult {
-  return { content: [{ type: 'text', text }] };
-}
-
-function err(text: string): ToolResult {
-  return { content: [{ type: 'text', text }], isError: true };
-}
-
-function str(params: Record<string, unknown>, key: string): string | undefined {
-  const v = params[key];
-  return typeof v === 'string' ? v : undefined;
-}
-
-function num(params: Record<string, unknown>, key: string): number | undefined {
-  const v = params[key];
-  return typeof v === 'number' ? v : undefined;
-}
+import { type ToolDefinition, ok, err, str, num, zodInputSchema } from './shared.js';
 
 /** Get current month as YYYY-MM. */
 function currentMonth(): string {
@@ -117,13 +78,9 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         name: 'monthly-financial-summary',
         description:
           'Get a monthly financial summary including income, expenses, net, savings rate, and top spending categories. Defaults to current month.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            month: { type: 'string', description: 'Month in YYYY-MM format (defaults to current month)' },
-          },
-          required: [],
-        },
+        inputSchema: zodInputSchema(z.object({
+          month: z.string().optional().describe('Month in YYYY-MM format (defaults to current month)'),
+        })),
       },
       handler: async (params) => {
         const month = str(params, 'month') ?? currentMonth();
@@ -217,21 +174,13 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         name: 'spending-analysis',
         description:
           'Analyze spending grouped by category, payee, or category group for a given period. Optionally compare to a prior period.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            start_date: { type: 'string', description: 'Start date (YYYY-MM-DD)' },
-            end_date: { type: 'string', description: 'End date (YYYY-MM-DD)' },
-            group_by: {
-              type: 'string',
-              enum: ['category', 'payee', 'category_group'],
-              description: 'How to group spending (default: category)',
-            },
-            compare_start_date: { type: 'string', description: 'Comparison period start date (YYYY-MM-DD)' },
-            compare_end_date: { type: 'string', description: 'Comparison period end date (YYYY-MM-DD)' },
-          },
-          required: ['start_date', 'end_date'],
-        },
+        inputSchema: zodInputSchema(z.object({
+          start_date: z.string().describe('Start date (YYYY-MM-DD)'),
+          end_date: z.string().describe('End date (YYYY-MM-DD)'),
+          group_by: z.enum(['category', 'payee', 'category_group']).optional().describe('How to group spending (default: category)'),
+          compare_start_date: z.string().optional().describe('Comparison period start date (YYYY-MM-DD)'),
+          compare_end_date: z.string().optional().describe('Comparison period end date (YYYY-MM-DD)'),
+        })),
       },
       handler: async (params) => {
         const startDate = str(params, 'start_date');
@@ -382,13 +331,9 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         name: 'budget-variance-report',
         description:
           'Compare budgeted vs actual spending for a month. Shows per-category variance and flags overspent categories with ⚠.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            month: { type: 'string', description: 'Month in YYYY-MM format (defaults to current month)' },
-          },
-          required: [],
-        },
+        inputSchema: zodInputSchema(z.object({
+          month: z.string().optional().describe('Month in YYYY-MM format (defaults to current month)'),
+        })),
       },
       handler: async (params) => {
         const month = str(params, 'month') ?? currentMonth();
@@ -451,11 +396,7 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         name: 'net-worth-snapshot',
         description:
           'Calculate total net worth from all accounts. Groups by on-budget vs off-budget and shows assets minus liabilities.',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-          required: [],
-        },
+        inputSchema: zodInputSchema(z.object({})),
       },
       handler: async () => {
         const accountsRes = await client.getAccounts();
@@ -518,18 +459,10 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         name: 'trend-analysis',
         description:
           'Analyze spending trends over multiple months with rolling averages and anomaly detection. Optionally filter by categories.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            months: { type: 'number', description: 'Number of months to analyze (default: 6)' },
-            categories: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Optional list of category IDs to filter',
-            },
-          },
-          required: [],
-        },
+        inputSchema: zodInputSchema(z.object({
+          months: z.number().optional().describe('Number of months to analyze (default: 6)'),
+          categories: z.array(z.string()).optional().describe('Optional list of category IDs to filter'),
+        })),
       },
       handler: async (params) => {
         const monthCount = num(params, 'months') ?? 6;
@@ -640,14 +573,10 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         name: 'income-expense-timeline',
         description:
           'Show month-by-month income, expenses, net, cumulative surplus/deficit, and savings rate over a date range.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            start_month: { type: 'string', description: 'Start month (YYYY-MM)' },
-            end_month: { type: 'string', description: 'End month (YYYY-MM)' },
-          },
-          required: ['start_month', 'end_month'],
-        },
+        inputSchema: zodInputSchema(z.object({
+          start_month: z.string().describe('Start month (YYYY-MM)'),
+          end_month: z.string().describe('End month (YYYY-MM)'),
+        })),
       },
       handler: async (params) => {
         const startMonth = str(params, 'start_month');
