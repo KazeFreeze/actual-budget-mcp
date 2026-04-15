@@ -280,6 +280,9 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
         let totalSpent = 0;
 
         for (const tx of txRes.data) {
+          // Skip parent transactions of splits (children carry the actual amounts)
+          if (tx.is_child === false && Array.isArray(tx.subtransactions) && (tx.subtransactions as unknown[]).length > 0) continue;
+
           const amount = tx.amount as number;
           if (amount >= 0) continue; // skip income
           const catId = tx.category as string | null;
@@ -307,6 +310,7 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
           if (compTxRes.ok) {
             compareSpending = new Map<string, number>();
             for (const tx of compTxRes.data) {
+              if (tx.is_child === false && Array.isArray(tx.subtransactions) && (tx.subtransactions as unknown[]).length > 0) continue;
               const amount = tx.amount as number;
               if (amount >= 0) continue;
               const catId = tx.category as string | null;
@@ -569,6 +573,7 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
 
           const catSpending = new Map<string, number>();
           for (const tx of txRes.data) {
+            if (tx.is_child === false && Array.isArray(tx.subtransactions) && (tx.subtransactions as unknown[]).length > 0) continue;
             const amount = tx.amount as number;
             if (amount >= 0) continue;
             const catId = tx.category as string | null;
@@ -687,6 +692,7 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
           let expenses = 0;
 
           for (const tx of txRes.data) {
+            if (tx.is_child === false && Array.isArray(tx.subtransactions) && (tx.subtransactions as unknown[]).length > 0) continue;
             const amount = tx.amount as number;
             const catId = tx.category as string | null;
 

@@ -27,7 +27,7 @@ services:
   actual-mcp:
     build: ../
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     environment:
       - ACTUAL_HTTP_API_URL=http://actual-http-api:5007
       - ACTUAL_HTTP_API_KEY=${API_KEY}
