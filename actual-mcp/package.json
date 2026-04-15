@@ -13,20 +13,44 @@
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "tsc --noEmit"
+    "lint": "eslint . && tsc --noEmit",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts' 'tests/**/*.ts'",
+    "prepare": "husky"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.0",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.3.0",
     "express": "^5.2.0",
-    "zod": "^4.3.0",
+    "express-rate-limit": "^8.3.2",
+    "helmet": "^8.1.0",
+    "p-retry": "^8.0.0",
     "pino": "^9.6.0",
-    "dotenv": "^17.3.0"
+    "zod": "^4.3.0"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.58.2",
+    "@typescript-eslint/parser": "^8.58.2",
+    "eslint": "^10.2.0",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "msw": "^2.13.3",
+    "prettier": "^3.8.3",
     "tsx": "^4.19.0",
     "typescript": "^5.9.0",
+    "typescript-eslint": "^8.58.2",
     "vitest": "^4.1.0"
   }
 }
