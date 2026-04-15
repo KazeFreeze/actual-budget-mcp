@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import pino from 'pino';
+import pRetry, { AbortError } from 'p-retry';
 
 // --- Result type ---
 
@@ -177,10 +178,11 @@ export interface ClientConfig {
   budgetSyncId: string;
   timeoutMs?: number;
   cacheTtlMs?: number;
+  retries?: number;
 }
 
 export function createClient(config: ClientConfig) {
-  const { baseUrl, apiKey, budgetSyncId, timeoutMs = 10_000, cacheTtlMs = 60_000 } = config;
+  const { baseUrl, apiKey, budgetSyncId, timeoutMs = 10_000, cacheTtlMs = 60_000, retries = 3 } = config;
   const logger = pino({ name: 'http-client', level: 'info' });
   const cache = new TtlCache(cacheTtlMs);
   const budgetBase = `${baseUrl}/v1/budgets/${budgetSyncId}`;
@@ -200,60 +202,91 @@ export function createClient(config: ClientConfig) {
       if (cached !== undefined) return { ok: true, data: cached };
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
     try {
-      const fullUrl = new URL(url);
-      if (options?.query) {
-        for (const [key, value] of Object.entries(options.query)) {
-          if (value !== undefined) fullUrl.searchParams.set(key, value);
-        }
-      }
+      const result = await pRetry(
+        async () => {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-      const startMs = Date.now();
-      const response = await fetch(fullUrl.toString(), {
-        method,
-        headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
-        body: options?.body ? JSON.stringify(options.body) : undefined,
-        signal: controller.signal,
-      });
-      const durationMs = Date.now() - startMs;
-      logger.debug({ method, url, status: response.status, durationMs }, 'HTTP request');
+          try {
+            const fullUrl = new URL(url);
+            if (options?.query) {
+              for (const [key, value] of Object.entries(options.query)) {
+                if (value !== undefined) fullUrl.searchParams.set(key, value);
+              }
+            }
 
-      if (!response.ok) {
-        let errorMsg: string;
-        try {
-          const errorBody = await response.json();
-          errorMsg = (errorBody as { error?: string }).error || response.statusText;
-        } catch {
-          errorMsg = response.statusText;
-        }
-        return { ok: false, error: `HTTP ${response.status}: ${errorMsg}` };
-      }
+            const startMs = Date.now();
+            const response = await fetch(fullUrl.toString(), {
+              method,
+              headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
+              body: options?.body ? JSON.stringify(options.body) : undefined,
+              signal: controller.signal,
+            });
+            const durationMs = Date.now() - startMs;
+            logger.debug({ method, url, status: response.status, durationMs }, 'HTTP request');
 
-      const json = await response.json();
-      const data = (json as { data?: unknown }).data ?? json;
+            if (!response.ok) {
+              let errorMsg: string;
+              try {
+                const errorBody = await response.json();
+                errorMsg = (errorBody as { error?: string }).error || response.statusText;
+              } catch {
+                errorMsg = response.statusText;
+              }
 
-      if (options?.schema) {
-        const parsed = options.schema.safeParse(data);
-        if (!parsed.success) {
-          logger.warn({ url, issues: parsed.error.issues }, 'Response validation failed');
-          return { ok: true, data: data as T };
-        }
-        if (method === 'GET' && options?.cacheKey) cache.set(options.cacheKey, parsed.data);
-        return { ok: true, data: parsed.data };
-      }
+              // 5xx: transient server errors — allow retry
+              if (response.status >= 500) {
+                throw new Error(`HTTP ${response.status}: ${errorMsg}`);
+              }
 
-      if (method === 'GET' && options?.cacheKey) cache.set(options.cacheKey, data);
-      return { ok: true, data: data as T };
+              // 4xx: intentional client errors — abort retry immediately
+              throw new AbortError(`HTTP ${response.status}: ${errorMsg}`);
+            }
+
+            const json = await response.json();
+            const data = (json as { data?: unknown }).data ?? json;
+
+            if (options?.schema) {
+              const parsed = options.schema.safeParse(data);
+              if (!parsed.success) {
+                logger.warn({ url, issues: parsed.error.issues }, 'Response validation failed');
+                return { ok: true as const, data: data as T };
+              }
+              if (method === 'GET' && options?.cacheKey) cache.set(options.cacheKey, parsed.data);
+              return { ok: true as const, data: parsed.data };
+            }
+
+            if (method === 'GET' && options?.cacheKey) cache.set(options.cacheKey, data);
+            return { ok: true as const, data: data as T };
+          } catch (err) {
+            // DOM AbortError from fetch timeout — stop retrying immediately
+            if (err instanceof DOMException && err.name === 'AbortError') {
+              throw new AbortError(`Request timeout after ${timeoutMs}ms`);
+            }
+            throw err;
+          } finally {
+            clearTimeout(timeout);
+          }
+        },
+        {
+          retries,
+          onFailedAttempt: (error) => {
+            logger.warn(
+              { attempt: error.attemptNumber, retriesLeft: error.retriesLeft, error: error.message },
+              'Retrying request',
+            );
+          },
+        },
+      );
+
+      return result;
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        return { ok: false, error: `Request timeout after ${timeoutMs}ms` };
+      // AbortError message is the real error message (4xx or timeout)
+      if (err instanceof AbortError) {
+        return { ok: false, error: err.message };
       }
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
-    } finally {
-      clearTimeout(timeout);
     }
   }
 
