@@ -1,0 +1,32 @@
+{
+  "name": "actual-budget-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Actual Budget via actual-http-api proxy",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "actual-budget-mcp": "build/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.0",
+    "express": "^5.2.0",
+    "zod": "^4.3.0",
+    "pino": "^9.6.0",
+    "dotenv": "^17.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.0"
+  }
+}
