@@ -16,10 +16,25 @@ async function main() {
     logger.info('MCP server running on stdio');
   } else {
     const express = (await import('express')).default;
+    const helmet = (await import('helmet')).default;
+    const { rateLimit } = await import('express-rate-limit');
     const app = express();
 
     // Parse JSON bodies for HTTP transport
     app.use(express.json());
+
+    // Security headers
+    app.use(helmet({ contentSecurityPolicy: false }));
+
+    // Rate limiting
+    const limiter = rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      limit: 100, // 100 requests per window per IP
+      standardHeaders: 'draft-8',
+      legacyHeaders: false,
+      message: { error: 'Too many requests, please try again later' },
+    });
+    app.use(limiter);
 
     if (config.mcpAuthToken) {
       const auth = createAuthMiddleware(config.mcpAuthToken);
