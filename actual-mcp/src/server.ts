@@ -38,7 +38,8 @@ export function createMcpServer(options: ServerOptions) {
   }));
 
   // Register tool call handler
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  server.setRequestHandler(CallToolRequestSchema, async (request): Promise<any> => {
     const { name, arguments: args } = request.params;
     const tool = allTools.find((t) => t.schema.name === name);
     if (!tool) {
