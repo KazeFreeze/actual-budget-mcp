@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { format, subMonths, parse, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import type { ActualClient } from '../client.js';
 import {
   formatAmount,
@@ -10,8 +11,7 @@ import { type ToolDefinition, ok, err, str, num, zodInputSchema } from './shared
 
 /** Get current month as YYYY-MM. */
 function currentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return format(new Date(), 'yyyy-MM');
 }
 
 /** Get all transactions across all non-closed accounts for a date range. */
@@ -40,32 +40,15 @@ async function getAllTransactions(
 
 /** Compute month string N months back from a given YYYY-MM. */
 function monthsBack(baseMonth: string, n: number): string {
-  const [yearStr, monthStr] = baseMonth.split('-');
-  let year = parseInt(yearStr, 10);
-  let month = parseInt(monthStr, 10) - n;
-  while (month <= 0) {
-    month += 12;
-    year -= 1;
-  }
-  return `${year}-${String(month).padStart(2, '0')}`;
+  const date = parse(baseMonth, 'yyyy-MM', new Date());
+  return format(subMonths(date, n), 'yyyy-MM');
 }
 
 /** Generate a range of months from start_month to end_month inclusive. */
 function monthRange(startMonth: string, endMonth: string): string[] {
-  const months: string[] = [];
-  const [sy, sm] = startMonth.split('-').map(Number);
-  const [ey, em] = endMonth.split('-').map(Number);
-  let y = sy;
-  let m = sm;
-  while (y < ey || (y === ey && m <= em)) {
-    months.push(`${y}-${String(m).padStart(2, '0')}`);
-    m += 1;
-    if (m > 12) {
-      m = 1;
-      y += 1;
-    }
-  }
-  return months;
+  const start = parse(startMonth, 'yyyy-MM', new Date());
+  const end = parse(endMonth, 'yyyy-MM', new Date());
+  return eachMonthOfInterval({ start, end }).map((d) => format(d, 'yyyy-MM'));
 }
 
 // --- Factory ---
@@ -85,10 +68,8 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
       handler: async (params) => {
         const month = str(params, 'month') ?? currentMonth();
         const sinceDate = `${month}-01`;
-        // Compute last day of month
-        const [y, m] = month.split('-').map(Number);
-        const lastDay = new Date(y, m, 0).getDate();
-        const untilDate = `${month}-${String(lastDay).padStart(2, '0')}`;
+        const monthDate = parse(month, 'yyyy-MM', new Date());
+        const untilDate = format(endOfMonth(monthDate), 'yyyy-MM-dd');
 
         // Fetch category groups to identify income categories
         const groupsRes = await client.getCategoryGroups();
@@ -497,9 +478,8 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
 
         for (const month of months) {
           const sinceDate = `${month}-01`;
-          const [y, m] = month.split('-').map(Number);
-          const lastDay = new Date(y, m, 0).getDate();
-          const untilDate = `${month}-${String(lastDay).padStart(2, '0')}`;
+          const monthDate = parse(month, 'yyyy-MM', new Date());
+          const untilDate = format(endOfMonth(monthDate), 'yyyy-MM-dd');
 
           const txRes = await getAllTransactions(client, sinceDate, untilDate);
           if (!txRes.ok) return err(txRes.error);
@@ -610,9 +590,8 @@ export function createAnalyticsTools(client: ActualClient, currencySymbol: strin
 
         for (const month of months) {
           const sinceDate = `${month}-01`;
-          const [y, m] = month.split('-').map(Number);
-          const lastDay = new Date(y, m, 0).getDate();
-          const untilDate = `${month}-${String(lastDay).padStart(2, '0')}`;
+          const monthDate = parse(month, 'yyyy-MM', new Date());
+          const untilDate = format(endOfMonth(monthDate), 'yyyy-MM-dd');
 
           const txRes = await getAllTransactions(client, sinceDate, untilDate);
           if (!txRes.ok) return err(txRes.error);

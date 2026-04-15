@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { format, subDays } from 'date-fns';
 import type { ActualClient } from '../client.js';
 import {
   formatAmount,
@@ -56,7 +57,7 @@ export function createCrudTools(client: ActualClient, currencySymbol: string): T
         const accountId = str(params, 'account_id');
         if (!accountId) return err('Missing required parameter: account_id');
 
-        const sinceDate = str(params, 'since_date') ?? new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+        const sinceDate = str(params, 'since_date') ?? format(subDays(new Date(), 30), 'yyyy-MM-dd');
         const untilDate = str(params, 'until_date');
 
         const res = await client.getTransactions(accountId, sinceDate, untilDate);
