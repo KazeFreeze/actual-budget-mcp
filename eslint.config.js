@@ -55,6 +55,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['build/**', 'node_modules/**', 'eslint.config.js', 'vitest.config.ts'],
+    ignores: ['build/**', 'node_modules/**', 'eslint.config.js', 'vitest.config.ts', 'commitlint.config.js'],
   },
 );
