@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.1...v1.0.2) (2026-04-16)
+
+
+### Bug Fixes
+
+* copy tsconfig.build.json in Docker build stage ([c76183d](https://github.com/KazeFreeze/actual-budget-mcp/commit/c76183d1b11fd280df3cd1a1493e03f4dd78c007))
+
 ## [1.0.1](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.0...v1.0.1) (2026-04-16)
 
 
