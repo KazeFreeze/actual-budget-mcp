@@ -37,6 +37,8 @@
     ]
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
