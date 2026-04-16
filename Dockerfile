@@ -11,7 +11,7 @@ RUN apk add --no-cache dumb-init curl
 ENV NODE_ENV=production
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 COPY --from=builder /app/build ./build
 USER node
 EXPOSE 3001
