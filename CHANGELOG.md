@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.0...v1.0.1) (2026-04-16)
+
+
+### Bug Fixes
+
+* prevent husky prepare script failure in Docker builds ([632b581](https://github.com/KazeFreeze/actual-budget-mcp/commit/632b581c136a327397f9d9b9df79331f573c04c7))
+
 ## 1.0.0 (2026-04-16)
 
 
