@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.3...v1.0.4) (2026-04-17)
+
+
+### Bug Fixes
+
+* skip auth for .well-known paths to allow MCP OAuth discovery fallback ([a3be1c6](https://github.com/KazeFreeze/actual-budget-mcp/commit/a3be1c69d73a9a1f99a90f63145c83d8ad5853f0))
+
 ## [1.0.3](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.2...v1.0.3) (2026-04-17)
 
 
