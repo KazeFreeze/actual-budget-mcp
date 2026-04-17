@@ -20,8 +20,14 @@ async function main(): Promise<void> {
     const { rateLimit } = await import('express-rate-limit');
     const app = express();
 
-    // Parse JSON bodies for HTTP transport
-    app.use(express.json());
+    // Parse JSON bodies — skip for SSE /messages route (transport reads raw stream)
+    app.use((req, res, next) => {
+      if (req.path === '/messages') {
+        next();
+        return;
+      }
+      express.json()(req, res, next);
+    });
 
     // Security headers
     app.use(helmet({ contentSecurityPolicy: false }));
