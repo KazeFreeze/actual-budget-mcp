@@ -450,9 +450,9 @@ export function createClient(config: ClientConfig) {
 
     // Health
     checkHealth: async (): Promise<boolean> => {
-      const result = await request<{ version: string }>(
+      const result = await request<Array<{ id: string; name: string }>>(
         'GET',
-        `${baseUrl}/v1/actualhttpapiversion`,
+        `${baseUrl}/v1/budgets`,
       );
       return result.ok;
     },

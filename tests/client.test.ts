@@ -183,8 +183,8 @@ describe('createClient', () => {
   describe('health check', () => {
     it('should return true when API is reachable', async () => {
       server.use(
-        http.get(`${BASE_URL}/v1/actualhttpapiversion`, () => {
-          return HttpResponse.json({ data: { version: '26.4.0' } });
+        http.get(`${BASE_URL}/v1/budgets`, () => {
+          return HttpResponse.json({ data: [{ id: 'test', name: 'Test' }] });
         }),
       );
 
