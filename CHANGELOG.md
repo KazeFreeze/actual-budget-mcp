@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.5](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.4...v1.0.5) (2026-04-17)
+
+
+### Bug Fixes
+
+* skip auth for OAuth discovery flow paths (/register, /authorize, /token) ([d02f49d](https://github.com/KazeFreeze/actual-budget-mcp/commit/d02f49d1a751a67fb41fc2829e3664c66824d2f7))
+
 ## [1.0.4](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.3...v1.0.4) (2026-04-17)
 
 
