@@ -39,8 +39,16 @@ async function main(): Promise<void> {
     if (config.mcpAuthToken) {
       const auth = createAuthMiddleware(config.mcpAuthToken);
       app.use((req, res, next) => {
-        // Skip auth for health check and OAuth discovery (returns 404 naturally)
-        if (req.path === '/health' || req.path.startsWith('/.well-known/')) {
+        // Skip auth for health check and MCP OAuth discovery flow
+        // SDK probes /.well-known/oauth-authorization-server then POST /register
+        // Let them 404 naturally so SDK falls back to custom headers
+        if (
+          req.path === '/health' ||
+          req.path.startsWith('/.well-known/') ||
+          req.path === '/register' ||
+          req.path === '/authorize' ||
+          req.path === '/token'
+        ) {
           next();
           return;
         }
