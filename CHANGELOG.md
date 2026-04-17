@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.2...v1.0.3) (2026-04-17)
+
+
+### Bug Fixes
+
+* use /v1/budgets for health check instead of non-existent version endpoint ([6881b47](https://github.com/KazeFreeze/actual-budget-mcp/commit/6881b47263cc308840abd68d5b14b0769d2e386c))
+
 ## [1.0.2](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.1...v1.0.2) (2026-04-16)
 
 
