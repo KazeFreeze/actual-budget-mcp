@@ -39,8 +39,8 @@ async function main(): Promise<void> {
     if (config.mcpAuthToken) {
       const auth = createAuthMiddleware(config.mcpAuthToken);
       app.use((req, res, next) => {
-        // Skip auth for health check
-        if (req.path === '/health') {
+        // Skip auth for health check and OAuth discovery (returns 404 naturally)
+        if (req.path === '/health' || req.path.startsWith('/.well-known/')) {
           next();
           return;
         }
