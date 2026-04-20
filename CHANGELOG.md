@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.6](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.5...v1.0.6) (2026-04-17)
+
+
+### Bug Fixes
+
+* skip express.json() for SSE /messages route ([0c4e4e2](https://github.com/KazeFreeze/actual-budget-mcp/commit/0c4e4e2ebc9145fc3c914dc89908a96242114899))
+
 ## [1.0.5](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.4...v1.0.5) (2026-04-17)
 
 
