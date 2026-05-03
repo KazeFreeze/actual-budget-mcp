@@ -73,7 +73,24 @@ export async function createApp(
       const { server: sessionServer } = createMcpServer({ config });
       const transport = new SSEServerTransport('/messages', res);
       transports.set(transport.sessionId, transport);
+
+      // SSE comment heartbeat: prevents Cloudflare/Traefik from dropping
+      // idle TCP connections (Cloudflare's edge times out around 100s).
+      // Comments (lines starting with ':') are ignored by SSE parsers.
+      const ping = setInterval(() => {
+        if (!res.writable) {
+          clearInterval(ping);
+          return;
+        }
+        try {
+          res.write(': ping\n\n');
+        } catch {
+          clearInterval(ping);
+        }
+      }, 25_000);
+
       res.on('close', () => {
+        clearInterval(ping);
         transports.delete(transport.sessionId);
         void sessionServer.close();
       });
