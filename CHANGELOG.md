@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.7](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.6...v1.0.7) (2026-05-03)
+
+
+### Bug Fixes
+
+* create fresh MCP Server per SSE connection ([#9](https://github.com/KazeFreeze/actual-budget-mcp/issues/9)) ([b41976a](https://github.com/KazeFreeze/actual-budget-mcp/commit/b41976a512239168b5c8fc36f414ed3ea7ad730f))
+
 ## [1.0.6](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.5...v1.0.6) (2026-04-17)
 
 
