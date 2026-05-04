@@ -178,6 +178,22 @@ export interface ActualClient {
 
   // schedules
   getSchedules(): Promise<Schedule[]>;
+  createSchedule(input: {
+    name: string | null;
+    rule: unknown;
+    active?: boolean;
+    posts_transaction?: boolean;
+  }): Promise<string>;
+  updateSchedule(
+    id: string,
+    fields: {
+      name?: string | null;
+      rule?: unknown;
+      active?: boolean;
+      posts_transaction?: boolean;
+    },
+  ): Promise<void>;
+  deleteSchedule(id: string): Promise<void>;
 
   // notes (NEW — fixed in v2)
   getNote(id: string): Promise<string | null>;

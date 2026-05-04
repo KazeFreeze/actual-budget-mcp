@@ -305,6 +305,49 @@ export class FakeActualClient implements ActualClient {
     return Promise.resolve([...this.schedules.values()]);
   }
 
+  createSchedule(input: {
+    name: string | null;
+    rule: unknown;
+    active?: boolean;
+    posts_transaction?: boolean;
+  }): Promise<string> {
+    const id = uuid();
+    this.schedules.set(id, {
+      id,
+      name: input.name,
+      rule: '',
+      active: input.active ?? false,
+      completed: false,
+      posts_transaction: input.posts_transaction ?? false,
+      next_date: '',
+    });
+    return Promise.resolve(id);
+  }
+
+  updateSchedule(
+    id: string,
+    fields: {
+      name?: string | null;
+      rule?: unknown;
+      active?: boolean;
+      posts_transaction?: boolean;
+    },
+  ): Promise<void> {
+    const cur = this.schedules.get(id);
+    if (!cur) throw new Error(`unknown schedule ${id}`);
+    const next: Schedule = { ...cur };
+    if (fields.name !== undefined) next.name = fields.name;
+    if (fields.active !== undefined) next.active = fields.active;
+    if (fields.posts_transaction !== undefined) next.posts_transaction = fields.posts_transaction;
+    this.schedules.set(id, next);
+    return Promise.resolve();
+  }
+
+  deleteSchedule(id: string): Promise<void> {
+    this.schedules.delete(id);
+    return Promise.resolve();
+  }
+
   // notes
   getNote(id: string): Promise<string | null> {
     return Promise.resolve(this.notes.get(id) ?? null);

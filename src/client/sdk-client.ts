@@ -194,12 +194,34 @@ export class SdkActualClient implements ActualClient {
     await api.resetBudgetHold(month);
   }
 
-  // ---- schedules — read via AQL
+  // ---- schedules — read via AQL, writes via internal.send
   async getSchedules(): Promise<Schedule[]> {
     // `select('*')` is supported at runtime by Actual's AQL even though the
     // SDK type signature only allows `any[]`.
     const res = await api.aqlQuery(api.q('schedules').select('*' as unknown as []));
     return (res as { data: Schedule[] }).data;
+  }
+  async createSchedule(input: {
+    name: string | null;
+    rule: unknown;
+    active?: boolean;
+    posts_transaction?: boolean;
+  }): Promise<string> {
+    return (await this.internalSend('schedule/create', { schedule: input })) as string;
+  }
+  async updateSchedule(
+    id: string,
+    fields: {
+      name?: string | null;
+      rule?: unknown;
+      active?: boolean;
+      posts_transaction?: boolean;
+    },
+  ): Promise<void> {
+    await this.internalSend('schedule/update', { schedule: { id, ...fields } });
+  }
+  async deleteSchedule(id: string): Promise<void> {
+    await this.internalSend('schedule/delete', { id });
   }
 
   // ---- notes (the v2 fix)
