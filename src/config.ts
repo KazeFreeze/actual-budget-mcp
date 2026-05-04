@@ -1,35 +1,88 @@
 import { z } from 'zod';
 import 'dotenv/config';
 
-const ConfigSchema = z.object({
-  actualHttpApiUrl: z.url(),
-  actualHttpApiKey: z.string().min(1),
-  budgetSyncId: z.string().min(1),
-  mcpAuthToken: z.string().min(1).optional(),
-  mcpTransport: z.enum(['stdio', 'sse', 'http']).default('stdio'),
-  mcpPort: z.coerce.number().int().positive().default(3001),
-  currencySymbol: z.string().default('$'),
-  logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-});
+const V1_VARS = ['ACTUAL_HTTP_API_URL', 'ACTUAL_HTTP_API_KEY'] as const;
+
+const apiKey = z
+  .string()
+  .min(32, 'MCP_API_KEYS entries must be at least 32 characters')
+  .refine(
+    (s) => new Set(s).size >= 16,
+    'MCP_API_KEYS entries must contain at least 16 unique characters',
+  );
+
+const ConfigSchema = z
+  .object({
+    actualServerUrl: z.url(),
+    actualServerPassword: z.string().min(1),
+    budgetSyncId: z.string().min(1),
+    budgetEncryptionPassword: z.string().min(1).optional(),
+    mcpApiKeys: z
+      .string()
+      .optional()
+      .transform((s) =>
+        s
+          ? s
+              .split(',')
+              .map((k) => k.trim())
+              .filter(Boolean)
+          : [],
+      )
+      .pipe(z.array(apiKey)),
+    mcpAllowedOrigins: z
+      .string()
+      .optional()
+      .transform((s) =>
+        s
+          ? s
+              .split(',')
+              .map((o) => o.trim())
+              .filter(Boolean)
+          : [],
+      ),
+    mcpTransport: z.enum(['stdio', 'sse', 'http']).default('stdio'),
+    mcpPort: z.coerce.number().int().positive().default(3000),
+    mcpRateLimitPerMin: z.coerce.number().int().positive().default(120),
+    mcpDataDir: z.string().default('/var/lib/actual-mcp'),
+    currencySymbol: z.string().default('$'),
+    logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  })
+  .refine((c) => c.mcpTransport === 'stdio' || c.mcpApiKeys.length > 0, {
+    message: 'MCP_API_KEYS is required when transport is http or sse',
+    path: ['mcpApiKeys'],
+  });
 
 export type Config = z.infer<typeof ConfigSchema>;
 
 export function loadConfig(): Config {
+  const offending = V1_VARS.filter((v) => process.env[v] !== undefined);
+  if (offending.length > 0) {
+    throw new Error(
+      `v1 environment variables detected: ${offending.join(', ')}. ` +
+        'See docs/MIGRATION-v1-to-v2.md for the new env var names.',
+    );
+  }
+
   const result = ConfigSchema.safeParse({
-    actualHttpApiUrl: process.env.ACTUAL_HTTP_API_URL,
-    actualHttpApiKey: process.env.ACTUAL_HTTP_API_KEY,
+    actualServerUrl: process.env.ACTUAL_SERVER_URL,
+    actualServerPassword: process.env.ACTUAL_SERVER_PASSWORD,
     budgetSyncId: process.env.ACTUAL_BUDGET_SYNC_ID,
-    mcpAuthToken: process.env.MCP_AUTH_TOKEN,
+    budgetEncryptionPassword: process.env.ACTUAL_BUDGET_ENCRYPTION_PASSWORD,
+    mcpApiKeys: process.env.MCP_API_KEYS,
+    mcpAllowedOrigins: process.env.MCP_ALLOWED_ORIGINS,
     mcpTransport: process.env.MCP_TRANSPORT,
     mcpPort: process.env.MCP_PORT,
+    mcpRateLimitPerMin: process.env.MCP_RATE_LIMIT_PER_MIN,
+    mcpDataDir: process.env.MCP_DATA_DIR,
     currencySymbol: process.env.CURRENCY_SYMBOL,
     logLevel: process.env.LOG_LEVEL,
   });
 
   if (!result.success) {
-    const errors = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
+    const errors = result.error.issues
+      .map((i) => `  ${i.path.join('.') || '(root)'}: ${i.message}`)
+      .join('\n');
     throw new Error(`Invalid configuration:\n${errors}`);
   }
-
   return result.data;
 }
