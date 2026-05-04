@@ -23,6 +23,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@actual-app/api": "^26.5.0",
     "@modelcontextprotocol/sdk": "^1.27.0",
     "date-fns": "^4.1.0",
     "dotenv": "^17.3.0",
