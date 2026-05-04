@@ -73,11 +73,12 @@ export function registerAccountTools(server: McpServer, deps: McpServerDeps): vo
     'close-account',
     {
       description:
-        'Close an account. Optionally transfer remaining balance to another account/category.',
+        'Close an account. Optionally transfer remaining balance to another account/category. ' +
+        'If transferCategoryId is supplied, transferAccountId is required.',
       inputSchema: {
         id: z.string().min(1),
-        transferAccountId: z.string().optional(),
-        transferCategoryId: z.string().optional(),
+        transferAccountId: z.string().min(1).optional(),
+        transferCategoryId: z.string().min(1).optional(),
       },
     },
     adaptAudited(
@@ -86,18 +87,15 @@ export function registerAccountTools(server: McpServer, deps: McpServerDeps): vo
         'close-account',
         () => client.sync(),
         async ({ id, transferAccountId, transferCategoryId }) => {
-          if (transferAccountId === undefined && transferCategoryId === undefined) {
-            await client.closeAccount(id);
-          } else if (transferCategoryId === undefined) {
-            await client.closeAccount(id, transferAccountId);
-          } else if (transferAccountId === undefined) {
-            // closeAccount's signature is (id, transferAccountId?, transferCategoryId?).
-            // If only a transferCategoryId is supplied without a transferAccountId,
-            // we cannot satisfy the positional contract; pass undefined explicitly is
-            // forbidden by exactOptionalPropertyTypes. Fall back to id-only close.
-            await client.closeAccount(id);
-          } else {
+          if (transferCategoryId !== undefined && transferAccountId === undefined) {
+            throw new Error('transferCategoryId requires transferAccountId');
+          }
+          if (transferAccountId !== undefined && transferCategoryId !== undefined) {
             await client.closeAccount(id, transferAccountId, transferCategoryId);
+          } else if (transferAccountId !== undefined) {
+            await client.closeAccount(id, transferAccountId);
+          } else {
+            await client.closeAccount(id);
           }
           return ok(`Closed account ${id}`);
         },
@@ -147,10 +145,13 @@ export function registerAccountTools(server: McpServer, deps: McpServerDeps): vo
     'get-account-balance',
     {
       description:
-        'Get the balance of an account, optionally as of a cutoff date (ISO YYYY-MM-DD).',
+        'Get the balance of an account, optionally as of a cutoff date (YYYY-MM-DD), inclusive.',
       inputSchema: {
         id: z.string().min(1),
-        cutoff: z.string().optional(),
+        cutoff: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
       },
     },
     adaptRead(

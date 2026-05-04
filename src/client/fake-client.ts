@@ -142,9 +142,13 @@ export class FakeActualClient implements ActualClient {
     return Promise.resolve();
   }
 
-  getAccountBalance(id: string, _cutoff?: Date): Promise<number> {
+  getAccountBalance(id: string, cutoff?: Date): Promise<number> {
     let sum = 0;
-    for (const t of this.transactions.values()) if (t.account === id) sum += t.amount;
+    for (const t of this.transactions.values()) {
+      if (t.account !== id) continue;
+      if (cutoff !== undefined && new Date(t.date) > cutoff) continue;
+      sum += t.amount;
+    }
     return Promise.resolve(sum);
   }
 
