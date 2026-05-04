@@ -39,7 +39,8 @@ const ConfigSchema = z
               .map((o) => o.trim())
               .filter(Boolean)
           : [],
-      ),
+      )
+      .pipe(z.array(z.url('MCP_ALLOWED_ORIGINS entries must be valid URLs'))),
     mcpTransport: z.enum(['stdio', 'sse', 'http']).default('stdio'),
     mcpPort: z.coerce.number().int().positive().default(3000),
     mcpRateLimitPerMin: z.coerce.number().int().positive().default(120),

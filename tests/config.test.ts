@@ -61,4 +61,9 @@ describe('loadConfig', () => {
     const cfg = loadConfig();
     expect(cfg.mcpApiKeys).toEqual([k1, k2]);
   });
+
+  it('rejects invalid ACTUAL_SERVER_URL', () => {
+    Object.assign(process.env, REQUIRED_OK, { ACTUAL_SERVER_URL: 'not-a-url' });
+    expect(() => loadConfig()).toThrow(/Invalid URL|actualServerUrl/i);
+  });
 });
