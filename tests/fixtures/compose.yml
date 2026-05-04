@@ -1,0 +1,12 @@
+services:
+  actual-server-fixture:
+    image: actualbudget/actual-server:latest
+    ports:
+      - "5006:5006"
+    volumes:
+      - actual-fixture-data:/data
+    environment:
+      ACTUAL_LOGIN_METHOD: password
+      ACTUAL_PORT: 5006
+volumes:
+  actual-fixture-data:
