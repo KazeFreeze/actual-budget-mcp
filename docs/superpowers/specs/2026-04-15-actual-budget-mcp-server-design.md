@@ -1,3 +1,6 @@
+> **Status:** Superseded by [`2026-05-04-v2-direct-sdk-design.md`](./2026-05-04-v2-direct-sdk-design.md) (v2 architecture).
+> Kept for historical reference.
+
 # Actual Budget MCP Server — Design Spec
 
 ## Overview
