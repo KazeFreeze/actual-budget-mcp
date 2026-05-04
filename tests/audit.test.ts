@@ -57,4 +57,15 @@ describe('withAudit', () => {
       expect(line).not.toContain(SECRET);
     }
   });
+
+  it('logs errorMessage verbatim — callers are responsible for redacting secrets', async () => {
+    const { logger, lines } = captureLogger();
+    const handler = withAudit(logger, 'set-notes', () => {
+      throw new Error('upstream said: bad-token-LEAKED');
+    });
+    await expect(handler({}, 'k')).rejects.toThrow();
+    const entry = JSON.parse(lines[0] ?? '{}') as { errorMessage: string };
+    // This pins the trust boundary — change deliberately, not accidentally.
+    expect(entry.errorMessage).toBe('upstream said: bad-token-LEAKED');
+  });
 });
