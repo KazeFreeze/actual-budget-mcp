@@ -13,7 +13,7 @@ jobs:
   lint:
     name: Lint & Type Check
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,8 +23,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
 
-  test:
-    name: Test
+  test-unit:
+    name: Test (unit)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -36,10 +36,10 @@ jobs:
       - run: npm ci
       - run: npm test
 
-  build:
-    name: Build
+  test-integration:
+    name: Test (integration)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -47,4 +47,35 @@ jobs:
           node-version: 22
           cache: 'npm'
       - run: npm ci
-      - run: npm run build
+      - run: npm run test:integration
+
+  audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run audit:ci
+
+  build-image:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
