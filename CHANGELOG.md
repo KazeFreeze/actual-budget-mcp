@@ -30,6 +30,13 @@
 - CI matrix: lint, unit, integration, npm audit, Docker image build
 - Docker image is non-root (uid 10001), `dumb-init` PID 1, healthcheck via `node fetch`
 
+## [1.0.8](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.7...v1.0.8) (2026-05-03)
+
+
+### Bug Fixes
+
+* emit SSE comment heartbeat every 25s ([#11](https://github.com/KazeFreeze/actual-budget-mcp/issues/11)) ([9bd9cc8](https://github.com/KazeFreeze/actual-budget-mcp/commit/9bd9cc8a6f89b751b4bdbe22d488533405d8589d))
+
 ## [1.0.7](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.6...v1.0.7) (2026-05-03)
 
 
