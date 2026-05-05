@@ -16,8 +16,14 @@ const __dirname = dirname(__filename);
 
 const FIXTURE = join(__dirname, '../fixtures/budget-cache');
 
-// Same SDK race observed in transactions.test.ts — give CRDT messages a moment
-// to apply before re-reading.
+// TEST-ONLY artifact — integration tests construct `SdkActualClient` via
+// `Object.create(SdkActualClient.prototype)` to skip lifecycle/auth, which
+// also bypasses the `writeTool` wrapper. In production, `writeTool`
+// (`src/tools/shared.ts:35-53`) calls `withRetriedSync(syncAfter)` after
+// every mutation, draining pending CRDT messages before the next read.
+// Tests skip that path, so this 250ms delay compensates by letting the
+// SDK's fire-and-forget batch update apply before re-reading. Production
+// callers do NOT see this race. See transactions.test.ts FINDINGS #4.
 const SETTLE = (): Promise<void> => new Promise<void>((r) => setTimeout(r, 250));
 
 // =====================================================================

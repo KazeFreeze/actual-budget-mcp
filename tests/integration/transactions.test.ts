@@ -28,12 +28,25 @@ const UNTIL = '2026-12-31';
 //    that token. Callers that need the new ids should re-query via
 //    `getTransactions` (as this round-trip test demonstrates).
 //
-// 4. STILL OPEN: `updateTransaction` and `deleteTransaction` in
-//    @actual-app/api have a fire-and-forget bug — the handler does
-//        return handlers["transactions-batch-update"](diff)["updated"]
-//    without awaiting the promise. Mutations apply asynchronously after
-//    the call returns. Worked around below with a small SETTLE delay.
+// 4. RESOLVED — upstream fire-and-forget is benign in production because
+//    `writeTool` always calls `client.sync()` after the mutation. The
+//    `transactions-batch-update` handler in @actual-app/api returns
+//    before its internal promise resolves, but production callers funnel
+//    through `writeTool` (`src/tools/shared.ts:35-53`) which wraps every
+//    write in `withRetriedSync(syncAfter)` — that sync drains pending
+//    CRDT messages before the next read can observe stale state. See
+//    SETTLE comment below for why tests still need the workaround.
 // =====================================================================
+//
+// The `SETTLE` delay is a TEST-ONLY artifact. Integration tests construct
+// the `SdkActualClient` directly via `Object.create(SdkActualClient.prototype)`
+// to skip the lifecycle/auth boilerplate, which means they also bypass the
+// `writeTool` wrapper that production callers go through. `writeTool`
+// (`src/tools/shared.ts:35-53`) calls `withRetriedSync(syncAfter)` after
+// every mutation, naturally draining pending fire-and-forget batch updates
+// before the next read. Tests skip that path, so we compensate with a
+// small delay to give the SDK's async writes time to apply. Production
+// callers do NOT see this race.
 const SETTLE = (): Promise<void> => new Promise<void>((r) => setTimeout(r, 250));
 
 describe('integration: transactions via real SDK (offline mode)', () => {
