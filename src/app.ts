@@ -116,20 +116,66 @@ export async function createApp(
   } else {
     const { StreamableHTTPServerTransport } =
       await import('@modelcontextprotocol/sdk/server/streamableHttp.js');
-    const server = createMcpServer({ config, client, coalescer, logger });
-    const transport = new StreamableHTTPServerTransport({});
-    // Cast: SDK's transport implementation declares `onclose: (() => void) | undefined`
-    // but the Transport interface uses `onclose?: () => void`. Under
-    // `exactOptionalPropertyTypes`, these are incompatible despite being
-    // structurally equivalent. Narrow cast keeps us strict elsewhere.
-    await server.connect(transport as Parameters<typeof server.connect>[0]);
+    const { randomUUID } = await import('node:crypto');
+
+    // Per-session server + transport pairs.
+    //
+    // A SINGLE shared StreamableHTTPServerTransport cannot be reused across
+    // multiple clients: in stateless mode it throws after the first request
+    // ("Stateless transport cannot be reused"), and in stateful mode it
+    // rejects every subsequent `initialize` ("Server already initialized").
+    // The correct pattern (mirrored from the SSE branch above) is to spin
+    // up a fresh server+transport per session, keyed by the SDK-generated
+    // session id, and dispatch incoming requests by Mcp-Session-Id header.
+    type Transport = InstanceType<typeof StreamableHTTPServerTransport>;
+    const sessions = new Map<
+      string,
+      { transport: Transport; server: ReturnType<typeof createMcpServer> }
+    >();
 
     app.all('/mcp', async (req, res) => {
-      await transport.handleRequest(req, res);
+      const sessionHeader = req.headers['mcp-session-id'];
+      const sessionId = Array.isArray(sessionHeader) ? sessionHeader[0] : sessionHeader;
+
+      let entry = sessionId ? sessions.get(sessionId) : undefined;
+
+      if (!entry) {
+        // No (or unknown) session — must be an `initialize` request. The
+        // transport will assign a session id during handleRequest and emit
+        // it via the `onsessioninitialized` callback so we can route
+        // subsequent requests for this session.
+        const sessionServer = createMcpServer({ config, client, coalescer, logger });
+        const sessionTransport: Transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          onsessioninitialized: (sid: string) => {
+            sessions.set(sid, { transport: sessionTransport, server: sessionServer });
+          },
+          onsessionclosed: (sid: string) => {
+            sessions.delete(sid);
+            void sessionServer.close();
+          },
+        });
+        // Cast: SDK's transport declares `onclose: (() => void) | undefined`
+        // but the Transport interface uses `onclose?: () => void`. Under
+        // `exactOptionalPropertyTypes` these are incompatible despite being
+        // structurally equivalent.
+        await sessionServer.connect(
+          sessionTransport as Parameters<typeof sessionServer.connect>[0],
+        );
+        entry = { transport: sessionTransport, server: sessionServer };
+      }
+
+      // Pass `req.body` explicitly: express.json() (mounted above) consumes
+      // the underlying request stream, so the SDK cannot re-read it.
+      await entry.transport.handleRequest(req, res, req.body);
     });
 
     cleanup = async (): Promise<void> => {
-      await server.close();
+      // Tear down every still-open session on shutdown so no MCP server
+      // instance leaks (each holds a reference to the SDK client/coalescer).
+      const closes = Array.from(sessions.values()).map(({ server: s }) => s.close());
+      sessions.clear();
+      await Promise.allSettled(closes);
     };
   }
 

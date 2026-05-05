@@ -23,16 +23,27 @@ describe('integration: notes via real SDK (offline mode)', () => {
   beforeEach(async () => {
     tmp = mkdtempSync(join(tmpdir(), 'actual-int-'));
     cpSync(FIXTURE, tmp, { recursive: true });
-    // Offline mode: serverURL omitted via no-op init; we hand-init the SDK
-    await api.init({ dataDir: tmp });
+    // Offline mode: serverURL omitted via no-op init; we hand-init the SDK.
+    // api.init's TS return type is `Promise<void>` but at runtime it returns
+    // the internal bridge ({ send, ... }) — the same value SdkActualClient
+    // captures on `this.lib`. We need to capture it here so we can hand it
+    // to the manually-constructed client below (since we're bypassing
+    // client.init() to point at a pre-existing offline fixture budget).
+    const lib = await (
+      api.init as unknown as (cfg: unknown) => Promise<{
+        send: (m: string, p?: unknown) => Promise<unknown>;
+      }>
+    )({ dataDir: tmp });
     // Open the budget that lives in the fixture cache
     const budgets = await api.getBudgets();
     const first = budgets[0];
     if (!first?.id) throw new Error('fixture has no budgets with an id');
     await api.loadBudget(first.id);
-    // Construct the client without re-initing
+    // Construct the client without re-initing — but plant the captured
+    // `lib` so internalSend (used by setNote/deleteNote) has its bridge.
     client = Object.create(SdkActualClient.prototype) as SdkActualClient;
-    (client as unknown as { initialized: boolean }).initialized = true;
+    (client as unknown as { initialized: boolean; lib: typeof lib }).initialized = true;
+    (client as unknown as { initialized: boolean; lib: typeof lib }).lib = lib;
   });
 
   afterEach(async () => {

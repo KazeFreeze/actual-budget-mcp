@@ -1,17 +1,18 @@
-/* eslint-disable @typescript-eslint/no-deprecated,
-                  @typescript-eslint/no-non-null-assertion,
-                  @typescript-eslint/require-await */
+/* eslint-disable @typescript-eslint/require-await */
 import { describe, it, expect, vi } from 'vitest';
+
+// `init` returns a `lib` object whose `send` method we capture on the client.
+// Using a single shared sendMock across the module so each test can assert it.
+const sendMock = vi.fn(async () => undefined);
 
 vi.mock('@actual-app/api', () => {
   return {
-    init: vi.fn(async () => {}),
+    init: vi.fn(async () => ({ send: sendMock })),
     shutdown: vi.fn(async () => {}),
     sync: vi.fn(async () => {}),
     downloadBudget: vi.fn(async () => {}),
     getCategories: vi.fn(async () => [{ id: 'c1', name: 'Food', group_id: 'g1' }]),
     aqlQuery: vi.fn(async () => ({ data: [{ id: 'note-1', note: 'hi' }] })),
-    internal: { send: vi.fn(async () => undefined) },
     q: vi.fn((table: string) => ({
       filter: () => ({ select: () => ({ table, kind: 'query' }) }),
     })),
@@ -43,16 +44,17 @@ describe('SdkActualClient', () => {
     expect(note).toBe('hi');
   });
 
-  it('writes notes via internal.send(notes-save)', async () => {
-    const api = await import('@actual-app/api');
+  it('writes notes via the lib.send(notes-save) returned from init()', async () => {
+    sendMock.mockClear();
     const c = new SdkActualClient({
       dataDir: '/tmp/x',
       serverURL: 'http://x',
       password: 'p',
       syncId: 's',
     });
+    await c.init();
     await c.setNote('note-1', 'updated');
-    expect(api.internal!.send).toHaveBeenCalledWith('notes-save', {
+    expect(sendMock).toHaveBeenCalledWith('notes-save', {
       id: 'note-1',
       note: 'updated',
     });

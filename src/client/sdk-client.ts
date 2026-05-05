@@ -20,18 +20,35 @@ export interface SdkActualClientOptions {
   encryptionPassword?: string;
 }
 
+// The shape of the `lib` value returned from `api.init()`. The SDK's TS types
+// declare init's return as `Promise<void>` even though at runtime it returns
+// the internal handler bridge ({ send, on, ... }). We only need `send`.
+interface ActualLib {
+  send: (msg: string, payload?: unknown) => Promise<unknown>;
+}
+
 export class SdkActualClient implements ActualClient {
   private initialized = false;
+  // Captured from `api.init()` return value. Used for the deprecated-but-only
+  // path to persist notes (no top-level `notes-save` SDK method exists). The
+  // module-level `api.internal` export is unreliable across module-resolution
+  // contexts (e.g. when the SDK ends up loaded twice through different module
+  // graphs); the per-instance `lib` returned from init() is the canonical
+  // reference and what the SDK's own JSDoc directs callers to use.
+  private lib: ActualLib | null = null;
 
   constructor(private readonly opts: SdkActualClientOptions) {}
 
   async init(): Promise<void> {
     if (this.initialized) return;
-    await api.init({
+    // api.init's TS return type is `Promise<void>` but at runtime it returns
+    // the internal bridge ({ send, on, ... }). Capture it for `internalSend`.
+    const lib = await (api.init as unknown as (cfg: unknown) => Promise<ActualLib>)({
       dataDir: this.opts.dataDir,
       serverURL: this.opts.serverURL,
       password: this.opts.password,
     });
+    this.lib = lib;
     await api.downloadBudget(
       this.opts.syncId,
       this.opts.encryptionPassword ? { password: this.opts.encryptionPassword } : undefined,
@@ -42,6 +59,7 @@ export class SdkActualClient implements ActualClient {
   async shutdown(): Promise<void> {
     if (!this.initialized) return;
     await api.shutdown();
+    this.lib = null;
     this.initialized = false;
   }
 
@@ -244,21 +262,19 @@ export class SdkActualClient implements ActualClient {
     await api.deleteTag(id);
   }
 
-  // Bridge to deprecated `internal.send` — the only way to persist notes/tags
-  // until the SDK exposes proper top-level methods.
+  // Bridge to the SDK's internal `send` — the only way to persist notes
+  // until the SDK exposes a top-level `setNote`. Uses `this.lib` (captured
+  // from init()'s return value) instead of the module-level `api.internal`
+  // export. The module-level export is a getter over a module-private `let`
+  // that can read as `null` if the SDK module was loaded through a different
+  // module graph than the one calling `api.init()` — this happens in
+  // production when bundlers or runtime ESM loaders end up with two copies
+  // of the @actual-app/api module. The `lib` returned from init() is local
+  // to this instance and immune to that hazard.
   private async internalSend(msg: string, payload: unknown): Promise<unknown> {
-    const internal = (
-      api as unknown as {
-        internal: {
-          send: (m: string, p: unknown) => Promise<unknown>;
-        } | null;
-      }
-    ).internal;
-    if (!internal) {
-      throw new Error(
-        'SdkActualClient: api.internal is not available; ensure init() has been called',
-      );
+    if (!this.lib) {
+      throw new Error('SdkActualClient: init() has not been called');
     }
-    return internal.send(msg, payload);
+    return this.lib.send(msg, payload);
   }
 }
