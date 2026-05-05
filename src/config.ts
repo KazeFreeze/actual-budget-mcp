@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import 'dotenv/config';
 
-const V1_VARS = ['ACTUAL_HTTP_API_URL', 'ACTUAL_HTTP_API_KEY'] as const;
+const V1_VARS = ['ACTUAL_HTTP_API_URL', 'ACTUAL_HTTP_API_KEY', 'MCP_AUTH_TOKEN'] as const;
 
 const apiKey = z
   .string()

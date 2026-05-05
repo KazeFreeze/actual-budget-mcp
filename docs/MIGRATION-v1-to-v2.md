@@ -23,7 +23,7 @@ One fewer container to run. The MCP server now opens the budget file in-process 
 
 `ACTUAL_BUDGET_SYNC_ID` is unchanged.
 
-If v2 detects either `ACTUAL_HTTP_API_URL` or `ACTUAL_HTTP_API_KEY` at startup, it logs a clear error and exits. (Note: `MCP_AUTH_TOKEN` is **not** in that detection list — if you leave it set you simply won't be authenticated, because `MCP_API_KEYS` will be empty. Rename it.)
+If v2 detects any of `ACTUAL_HTTP_API_URL`, `ACTUAL_HTTP_API_KEY`, or `MCP_AUTH_TOKEN` at startup, it logs a clear error pointing here and exits.
 
 Default `MCP_PORT` changed from `3001` (v1) to `3000` (v2).
 

@@ -32,6 +32,11 @@ describe('loadConfig', () => {
     expect(() => loadConfig()).toThrow(/MIGRATION-v1-to-v2/);
   });
 
+  it('rejects MCP_AUTH_TOKEN (v1 single-token var) with migration error', () => {
+    Object.assign(process.env, REQUIRED_OK, { MCP_AUTH_TOKEN: 'old-token' });
+    expect(() => loadConfig()).toThrow(/MCP_AUTH_TOKEN.*MIGRATION-v1-to-v2/s);
+  });
+
   it('rejects api keys with low entropy (<32 chars)', () => {
     Object.assign(process.env, REQUIRED_OK, { MCP_API_KEYS: 'short' });
     expect(() => loadConfig()).toThrow(/at least 32 characters/);
