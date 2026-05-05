@@ -50,6 +50,7 @@ export interface Tag {
   id: string;
   tag: string;
   color?: string | null;
+  description?: string | null;
 }
 
 export interface BudgetMonth {
@@ -202,7 +203,7 @@ export interface ActualClient {
 
   // tags (NEW)
   getTags(): Promise<Tag[]>;
-  createTag(tag: Omit<Tag, 'id'>): Promise<Tag>;
+  createTag(tag: Omit<Tag, 'id'>): Promise<string>;
   updateTag(id: string, fields: Partial<Omit<Tag, 'id'>>): Promise<void>;
   deleteTag(id: string): Promise<void>;
 }

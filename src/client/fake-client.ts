@@ -368,11 +368,11 @@ export class FakeActualClient implements ActualClient {
     return Promise.resolve([...this.tags.values()]);
   }
 
-  createTag(tag: Omit<Tag, 'id'>): Promise<Tag> {
+  createTag(tag: Omit<Tag, 'id'>): Promise<string> {
     const id = uuid();
     const full: Tag = { id, ...tag };
     this.tags.set(id, full);
-    return Promise.resolve(full);
+    return Promise.resolve(id);
   }
 
   updateTag(id: string, fields: Partial<Omit<Tag, 'id'>>): Promise<void> {

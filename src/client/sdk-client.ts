@@ -239,17 +239,16 @@ export class SdkActualClient implements ActualClient {
 
   // ---- tags
   async getTags(): Promise<Tag[]> {
-    const res = await api.aqlQuery(api.q('tags').select('*' as unknown as []));
-    return (res as { data: Tag[] }).data;
+    return (await api.getTags()) as Tag[];
   }
-  async createTag(tag: Omit<Tag, 'id'>): Promise<Tag> {
-    return (await this.internalSend('tags-create', tag)) as Tag;
+  async createTag(tag: Omit<Tag, 'id'>): Promise<string> {
+    return api.createTag(tag as Parameters<typeof api.createTag>[0]);
   }
   async updateTag(id: string, fields: Partial<Omit<Tag, 'id'>>): Promise<void> {
-    await this.internalSend('tags-update', { id, ...fields });
+    await api.updateTag(id, fields as Parameters<typeof api.updateTag>[1]);
   }
   async deleteTag(id: string): Promise<void> {
-    await this.internalSend('tags-delete', [id]);
+    await api.deleteTag(id);
   }
 
   // Bridge to deprecated `internal.send` — the only way to persist notes/tags

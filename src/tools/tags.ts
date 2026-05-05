@@ -24,6 +24,7 @@ export function registerTagTools(server: McpServer, deps: McpServerDeps): void {
       inputSchema: {
         tag: z.string().min(1),
         color: z.string().nullable().optional(),
+        description: z.string().nullable().optional(),
       },
     },
     adaptAudited(
@@ -32,8 +33,8 @@ export function registerTagTools(server: McpServer, deps: McpServerDeps): void {
         'create-tag',
         () => client.sync(),
         async (input) => {
-          const created = await client.createTag(compact(input));
-          return ok(`Created tag ${created.id}`);
+          const id = await client.createTag(compact(input));
+          return ok(`Created tag ${id}`);
         },
       ),
     ),
@@ -48,6 +49,7 @@ export function registerTagTools(server: McpServer, deps: McpServerDeps): void {
         fields: z.object({
           tag: z.string().min(1).optional(),
           color: z.string().nullable().optional(),
+          description: z.string().nullable().optional(),
         }),
       },
     },

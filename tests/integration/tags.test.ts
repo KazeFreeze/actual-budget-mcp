@@ -23,49 +23,39 @@ const SETTLE = (): Promise<void> => new Promise<void>((r) => setTimeout(r, 250))
 // =====================================================================
 // FINDINGS — Task 5.3 integration coverage exposed real adapter drift.
 //
-// 1. `getTags()` adapter implementation is broken in @actual-app/api 25.x.
-//    The adapter does:
-//        await api.aqlQuery(api.q('tags').select('*' as unknown as []))
-//    AQL has no `tags` table, so the query rejects with
-//        Error: Table "tags" does not exist
-//    (verified by integration test, see commented reproducer below).
-//    The fix is to use the public `api.getTags()` method, which routes
-//    through `api/tags-get` and runs raw SQL on the real `tags` table.
+// 1. FIXED in Task 5.4a (this file's commit): `getTags()` adapter now
+//    delegates to the public `api.getTags()` method, which routes through
+//    `api/tags-get` and runs raw SQL on the real `tags` table. The
+//    previous implementation used `api.aqlQuery(api.q('tags').select('*'))`
+//    which threw `Error: Table "tags" does not exist` because AQL has no
+//    `tags` table.
 //
-// 2. `createTag()` / `updateTag()` / `deleteTag()` use unverified
-//    `internal.send('tags-{create,update,delete}')` channels. Since
-//    `getTags()` is broken we can't even round-trip writes to verify them,
-//    but inspection of loot-core (`tags/app.ts`) shows:
-//      - `tags-create` payload `{ tag, color, description }` is correct
-//        for the adapter's current shape.
-//      - `tags-update` payload `{ id, ...fields }` is correct.
-//      - `tags-delete` payload should be `{ id }` (an OBJECT) — the
-//        loot-core handler `deleteTag$1(tag)` reads `tag.id`. The adapter
-//        currently sends `[id]` (an ARRAY), which would set `tag.id` to
-//        undefined. The array-of-ids channel is `tags-delete-all`.
-//    The public SDK now exposes `api.createTag/updateTag/deleteTag` that
-//    handle all of this; the adapter should delegate to them.
+// 2. FIXED in Task 5.4a (this file's commit): `createTag()` /
+//    `updateTag()` / `deleteTag()` now delegate to the public
+//    `api.createTag/updateTag/deleteTag` functions, which wrap the
+//    correct internal channels (`api/tag-{create,update,delete}` —
+//    singular!) with the right payload shapes. The previous
+//    implementation used unverified `internal.send('tags-{create,update,delete}')`
+//    channels, and the `tags-delete` payload was incorrectly an array
+//    (`[id]`) instead of an object (`{id}`) — the array-of-ids channel
+//    is `tags-delete-all`. `api.createTag` returns the new id as a
+//    string (matches the SDK's `Promise<string>` signature).
 //
-// 3. `addTransactions` adapter typed as `Promise<string>`; underlying SDK
-//    handler returns the literal `"ok"` (not a list of new ids). This is
-//    handled in transactions.test.ts by not over-asserting on the result
-//    value, only that the new transaction appears in `getTransactions`.
+// 3. STILL OPEN: `addTransactions` adapter typed as `Promise<string>`;
+//    underlying SDK handler returns the literal `"ok"` (not a list of new
+//    ids). This is handled in transactions.test.ts by not over-asserting
+//    on the result value, only that the new transaction appears in
+//    `getTransactions`.
 //
-// 4. `updateTransaction` and `deleteTransaction` in @actual-app/api have a
-//    fire-and-forget bug — the handler does
+// 4. STILL OPEN: `updateTransaction` and `deleteTransaction` in
+//    @actual-app/api have a fire-and-forget bug — the handler does
 //        return handlers["transactions-batch-update"](diff)["updated"]
 //    without awaiting the promise. Mutations apply asynchronously after
 //    the call returns. Worked around in transactions.test.ts with a small
 //    settle delay.
-//
-// All four findings are observable adapter / SDK behavior; none of them
-// are fixed in this commit per the Task 5.3 protocol of "report, do not
-// silently fix". The reproducer test below is intentionally skipped so
-// the suite exit-codes clean — vitest treats SDK-internal unhandled
-// rejections as suite errors, masking the rest of the signal.
 // =====================================================================
 
-describe.skip('integration: tags via real SDK (offline mode) — BLOCKED on adapter bugs', () => {
+describe('integration: tags via real SDK (offline mode)', () => {
   let tmp: string;
   let client: SdkActualClient;
 
@@ -86,32 +76,31 @@ describe.skip('integration: tags via real SDK (offline mode) — BLOCKED on adap
     rmSync(tmp, { recursive: true });
   });
 
-  it('reproducer: getTags via aqlQuery throws "Table tags does not exist"', async () => {
-    // Skipped at the describe level. When the adapter is fixed to use
-    // `api.getTags()`, change `describe.skip` → `describe` and replace
-    // this assertion with a positive `expect(Array.isArray(tags)).toBe(true)`.
-    await expect(client.getTags()).rejects.toThrow(/Table "tags" does not exist/);
+  it('lists tags from the fixture (likely empty initially)', async () => {
+    const tags = await client.getTags();
+    expect(Array.isArray(tags)).toBe(true);
   });
 
   it('round-trip: create / update / delete a tag via adapter', async () => {
     const created = await client.createTag({ tag: 'integration-tag', color: '#abcdef' });
-    expect(typeof created.id).toBe('string');
-    expect(created.tag).toBe('integration-tag');
+    expect(typeof created).toBe('string');
 
     await SETTLE();
     let tags = await client.getTags();
-    expect(tags.find((t) => t.id === created.id)).toBeDefined();
+    const found = tags.find((t) => t.id === created);
+    expect(found).toBeDefined();
+    expect(found?.tag).toBe('integration-tag');
 
-    await client.updateTag(created.id, { tag: 'integration-tag-renamed' });
+    await client.updateTag(created, { tag: 'integration-tag-renamed' });
     await SETTLE();
     tags = await client.getTags();
-    const renamed = tags.find((t) => t.id === created.id);
+    const renamed = tags.find((t) => t.id === created);
     if (!renamed) throw new Error('renamed tag vanished');
     expect(renamed.tag).toBe('integration-tag-renamed');
 
-    await client.deleteTag(created.id);
+    await client.deleteTag(created);
     await SETTLE();
     tags = await client.getTags();
-    expect(tags.find((t) => t.id === created.id)).toBeUndefined();
+    expect(tags.find((t) => t.id === created)).toBeUndefined();
   });
 });

@@ -49,8 +49,8 @@ describe('tag tools', () => {
 
   it('update-tag updates the tag field', async () => {
     const { server, client } = setup(registerTagTools);
-    const created = await client.createTag({ tag: 'old' });
-    const r = await call(server, 'update-tag', { id: created.id, fields: { tag: 'renamed' } });
+    const id = await client.createTag({ tag: 'old' });
+    const r = await call(server, 'update-tag', { id, fields: { tag: 'renamed' } });
     expect(r.isError).toBeFalsy();
     const tags = await client.getTags();
     expect(tags[0]?.tag).toBe('renamed');
@@ -58,8 +58,8 @@ describe('tag tools', () => {
 
   it('update-tag preserves color: null (clearing the color)', async () => {
     const { server, client } = setup(registerTagTools);
-    const created = await client.createTag({ tag: 'x', color: '#abc' });
-    const r = await call(server, 'update-tag', { id: created.id, fields: { color: null } });
+    const id = await client.createTag({ tag: 'x', color: '#abc' });
+    const r = await call(server, 'update-tag', { id, fields: { color: null } });
     expect(r.isError).toBeFalsy();
     const tags = await client.getTags();
     expect(tags[0]?.color).toBeNull();
@@ -67,8 +67,8 @@ describe('tag tools', () => {
 
   it('delete-tag removes the tag', async () => {
     const { server, client } = setup(registerTagTools);
-    const created = await client.createTag({ tag: 'gone' });
-    const r = await call(server, 'delete-tag', { id: created.id });
+    const id = await client.createTag({ tag: 'gone' });
+    const r = await call(server, 'delete-tag', { id });
     expect(r.isError).toBeFalsy();
     expect(await client.getTags()).toHaveLength(0);
   });
