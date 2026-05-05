@@ -142,11 +142,15 @@ export interface ActualClient {
 
   // transactions
   getTransactions(accountId: string, sinceDate: string, untilDate: string): Promise<Transaction[]>;
+  // NOTE: the underlying SDK handler `api/transactions-add` returns the literal
+  // string "ok" rather than any new id(s). We honestly type the adapter as
+  // `Promise<void>` and discard that token. Callers needing the new ids should
+  // re-query via `getTransactions`.
   addTransactions(
     accountId: string,
     transactions: Omit<Transaction, 'id'>[],
     opts?: { learnCategories?: boolean; runTransfers?: boolean },
-  ): Promise<string>;
+  ): Promise<void>;
   importTransactions(
     accountId: string,
     transactions: Omit<Transaction, 'id'>[],

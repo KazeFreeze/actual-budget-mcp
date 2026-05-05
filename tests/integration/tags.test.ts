@@ -41,11 +41,11 @@ const SETTLE = (): Promise<void> => new Promise<void>((r) => setTimeout(r, 250))
 //    is `tags-delete-all`. `api.createTag` returns the new id as a
 //    string (matches the SDK's `Promise<string>` signature).
 //
-// 3. STILL OPEN: `addTransactions` adapter typed as `Promise<string>`;
-//    underlying SDK handler returns the literal `"ok"` (not a list of new
-//    ids). This is handled in transactions.test.ts by not over-asserting
-//    on the result value, only that the new transaction appears in
-//    `getTransactions`.
+// 3. FIXED in Task 5.4b: `addTransactions` adapter is now correctly typed
+//    `Promise<void>` (was `Promise<string>`). The underlying SDK handler
+//    `api/transactions-add` returns the literal `"ok"`, not a list of new
+//    ids; the adapter discards that token. Callers that need the new ids
+//    should re-query via `getTransactions` (see transactions.test.ts).
 //
 // 4. STILL OPEN: `updateTransaction` and `deleteTransaction` in
 //    @actual-app/api have a fire-and-forget bug — the handler does

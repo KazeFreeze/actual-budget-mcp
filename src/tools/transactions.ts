@@ -87,12 +87,13 @@ export function registerTransactionTools(server: McpServer, deps: McpServerDeps)
           runTransfers: boolean | undefined;
         }) => {
           const opts = compact({ learnCategories, runTransfers });
-          const result = await client.addTransactions(
-            accountId,
-            toClientTxs(accountId, transactions),
-            opts,
+          await client.addTransactions(accountId, toClientTxs(accountId, transactions), opts);
+          // The SDK channel does not return new ids; report the submitted
+          // count and the account so callers can re-query if they need ids.
+          return ok(
+            `Added ${transactions.length} transaction(s) to account ${accountId} ` +
+              `(re-query via get-transactions to obtain new ids).`,
           );
-          return ok(`Added: ${result}`);
         },
       ),
     ),

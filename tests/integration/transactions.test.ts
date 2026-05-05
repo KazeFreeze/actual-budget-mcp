@@ -19,13 +19,21 @@ const FIXTURE = join(__dirname, '../fixtures/budget-cache');
 const SINCE = '2026-01-01';
 const UNTIL = '2026-12-31';
 
-// FINDING: `api.updateTransaction` (and likely `api.deleteTransaction`) returns
-// before the underlying CRDT message is applied — the handler does
-// `return handlers["transactions-batch-update"](diff)["updated"]` (no await),
-// so the mutation runs in the background. Tests that read immediately after
-// writing see stale data. Workaround: wait briefly between mutate and read.
-// This is observable through our adapter but is upstream behavior in
-// @actual-app/api itself.
+// =====================================================================
+// FINDINGS — Task 5.3 integration coverage exposed real adapter drift.
+//
+// 3. FIXED in Task 5.4b: `addTransactions` adapter is now correctly typed
+//    `Promise<void>`. The underlying SDK handler `api/transactions-add`
+//    returns the literal string "ok", not a list of new ids; we discard
+//    that token. Callers that need the new ids should re-query via
+//    `getTransactions` (as this round-trip test demonstrates).
+//
+// 4. STILL OPEN: `updateTransaction` and `deleteTransaction` in
+//    @actual-app/api have a fire-and-forget bug — the handler does
+//        return handlers["transactions-batch-update"](diff)["updated"]
+//    without awaiting the promise. Mutations apply asynchronously after
+//    the call returns. Worked around below with a small SETTLE delay.
+// =====================================================================
 const SETTLE = (): Promise<void> => new Promise<void>((r) => setTimeout(r, 250));
 
 describe('integration: transactions via real SDK (offline mode)', () => {
@@ -73,9 +81,10 @@ describe('integration: transactions via real SDK (offline mode)', () => {
     const before = await client.getTransactions(checkingId, SINCE, UNTIL);
     const beforeIds = new Set(before.map((t) => t.id));
 
-    // add — adapter is typed as Promise<string>; the underlying SDK returns
-    // the literal string "ok" (not a list of new ids). Don't over-assert here.
-    const addResult = await client.addTransactions(
+    // add — adapter returns Promise<void> (Task 5.4b); the SDK channel does
+    // not surface the new ids, so we round-trip through getTransactions to
+    // verify the row landed.
+    await client.addTransactions(
       checkingId,
       [
         {
@@ -88,7 +97,6 @@ describe('integration: transactions via real SDK (offline mode)', () => {
       ],
       { learnCategories: false, runTransfers: false },
     );
-    expect(addResult).toBeDefined();
 
     const after = await client.getTransactions(checkingId, SINCE, UNTIL);
     expect(after.length).toBe(before.length + 1);

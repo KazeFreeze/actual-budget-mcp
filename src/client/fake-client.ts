@@ -169,12 +169,12 @@ export class FakeActualClient implements ActualClient {
     accountId: string,
     transactions: Omit<Transaction, 'id'>[],
     _opts?: { learnCategories?: boolean; runTransfers?: boolean },
-  ): Promise<string> {
+  ): Promise<void> {
     for (const t of transactions) {
       const id = uuid();
       this.transactions.set(id, { ...t, id, account: accountId });
     }
-    return Promise.resolve('ok');
+    return Promise.resolve();
   }
 
   importTransactions(

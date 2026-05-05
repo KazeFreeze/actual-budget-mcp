@@ -120,8 +120,9 @@ export class SdkActualClient implements ActualClient {
     accountId: string,
     txs: Omit<Transaction, 'id'>[],
     opts?: { learnCategories?: boolean; runTransfers?: boolean },
-  ): Promise<string> {
-    return api.addTransactions(accountId, txs as Parameters<typeof api.addTransactions>[1], opts);
+  ): Promise<void> {
+    // SDK handler returns the literal string "ok"; we discard it.
+    await api.addTransactions(accountId, txs as Parameters<typeof api.addTransactions>[1], opts);
   }
   async importTransactions(
     accountId: string,
