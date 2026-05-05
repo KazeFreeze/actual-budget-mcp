@@ -11,6 +11,7 @@ import { registerNoteTools } from './notes.js';
 import { registerTagTools } from './tags.js';
 import { registerQueryTool } from './query.js';
 import { registerUtilityTools } from './utility.js';
+import { registerAnalyticsTools } from './analytics.js';
 
 export function registerAllTools(server: McpServer, deps: McpServerDeps): void {
   registerCategoryTools(server, deps);
@@ -24,4 +25,5 @@ export function registerAllTools(server: McpServer, deps: McpServerDeps): void {
   registerTagTools(server, deps);
   registerQueryTool(server, deps);
   registerUtilityTools(server, deps);
+  registerAnalyticsTools(server, deps);
 }

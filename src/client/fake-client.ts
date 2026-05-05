@@ -405,4 +405,12 @@ export class FakeActualClient implements ActualClient {
   seedNote(id: string, note: string): void {
     this.notes.set(id, note);
   }
+
+  seedCategoryGroup(g: CategoryGroup): void {
+    this.categoryGroups.set(g.id, g);
+  }
+
+  seedBudgetMonth(m: BudgetMonth): void {
+    this.budgetMonths.set(m.month, m);
+  }
 }

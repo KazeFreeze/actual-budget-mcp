@@ -23,7 +23,7 @@ export function setup(register: (server: McpServer, deps: McpServerDeps) => void
   const logger = pino({ level: 'silent' });
   const server = new McpServer({ name: 't', version: '0' }, { capabilities: { tools: {} } });
   register(server, {
-    config: {} as Config,
+    config: { currencySymbol: '$' } as Config,
     client,
     coalescer,
     logger,
