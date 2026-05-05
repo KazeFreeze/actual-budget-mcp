@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.0.0 (unreleased)
+
+### ⚠ BREAKING CHANGES
+
+- Replaces the `actual-http-api` proxy with direct in-process use of the official `@actual-app/api` SDK. The MCP server now talks to your `actual-server` directly; the `actual-http-api` sidecar is no longer required (or supported).
+- Env vars renamed; v1 vars (`ACTUAL_HTTP_API_URL`, `ACTUAL_HTTP_API_KEY`, `MCP_AUTH_TOKEN`) cause startup failure with a pointer to the migration guide. See [`docs/MIGRATION-v1-to-v2.md`](docs/MIGRATION-v1-to-v2.md).
+- `MCP_AUTH_TOKEN` (single token) is replaced by `MCP_API_KEYS` (comma-separated rotation list). Each key must be ≥32 chars and contain ≥16 unique characters.
+- Default `MCP_PORT` changed from `3001` to `3000`. Update reverse-proxy and client configurations.
+- Default Docker volume `/var/lib/actual-mcp` is now required for persistent budget cache between restarts.
+- SSE transport is deprecated; planned removal in v2.1. Use Streamable HTTP (`MCP_TRANSPORT=http`) instead.
+- Several composite v1 tools were split into single-purpose tools (e.g. `manage-payee` → `create-payee`/`update-payee`/`delete-payee`/`merge-payees`; `manage-schedule` → individual CRUD; `run-query` → `query`). Tool input shape for `create-schedule`/`update-schedule` now uses the SDK's external flat shape (`payee`/`account`/`amount`/`amountOp`/`date`).
+- `add-transactions` no longer returns the new transaction id(s) — re-query via `get-transactions` to obtain them. (Underlying `@actual-app/api` handler returns a literal `"ok"` token, not ids.)
+
+### Features
+
+- **notes**: read, write, delete now work end-to-end (v1 was 404 due to a missing endpoint in `actual-http-api`)
+- **tags**: full CRUD (`get-tags`, `create-tag`, `update-tag`, `delete-tag`) — new in v2
+- **auth**: multi-key Bearer rotation, per-key entropy enforcement, sha256 audit identity prefix
+- **transports**: per-session Streamable HTTP transport with `Mcp-Session-Id` keying (replaces v1 singleton that broke under multi-client load)
+- **security**: Origin allowlist via `MCP_ALLOWED_ORIGINS`, audit logger module, p-retry on sync, 2s sync coalescing
+- **ActualQL**: full server-side aggregates (`$sum`, `$count`, `groupBy`, `$month`/`$year` date transforms) — these previously failed with HTTP 500 through the proxy
+- **prompts**: 4 guided prompts (`financial-health-check`, `budget-review`, `spending-deep-dive`, `actualql-reference`) restored to working state by re-porting the analytics tool group they reference
+
+### Quality
+
+- 194 unit + 11 integration + 5 e2e tests, all green
+- TypeScript strict + `exactOptionalPropertyTypes` + `noUncheckedIndexedAccess` enabled throughout
+- CI matrix: lint, unit, integration, npm audit, Docker image build
+- Docker image is non-root (uid 10001), `dumb-init` PID 1, healthcheck via `node fetch`
+
 ## [1.0.7](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.6...v1.0.7) (2026-05-03)
 
 
