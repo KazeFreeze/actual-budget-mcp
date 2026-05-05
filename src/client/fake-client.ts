@@ -305,40 +305,42 @@ export class FakeActualClient implements ActualClient {
     return Promise.resolve([...this.schedules.values()]);
   }
 
-  createSchedule(input: {
-    name: string | null;
-    rule: unknown;
-    active?: boolean;
-    posts_transaction?: boolean;
-  }): Promise<string> {
+  createSchedule(
+    input: Omit<Schedule, 'id' | 'rule' | 'next_date' | 'completed'>,
+  ): Promise<string> {
     const id = uuid();
-    this.schedules.set(id, {
+    const stored: Schedule = {
       id,
-      name: input.name,
-      rule: '',
-      active: input.active ?? false,
-      completed: false,
-      posts_transaction: input.posts_transaction ?? false,
-      next_date: '',
-    });
+      posts_transaction: input.posts_transaction,
+      amountOp: input.amountOp,
+      date: input.date,
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.payee !== undefined ? { payee: input.payee } : {}),
+      ...(input.account !== undefined ? { account: input.account } : {}),
+      ...(input.amount !== undefined ? { amount: input.amount } : {}),
+    };
+    this.schedules.set(id, stored);
     return Promise.resolve(id);
   }
 
   updateSchedule(
     id: string,
-    fields: {
-      name?: string | null;
-      rule?: unknown;
-      active?: boolean;
-      posts_transaction?: boolean;
-    },
+    fields: Partial<Omit<Schedule, 'id' | 'rule' | 'next_date' | 'completed'>>,
+    resetNextDate?: boolean,
   ): Promise<void> {
     const cur = this.schedules.get(id);
     if (!cur) throw new Error(`unknown schedule ${id}`);
     const next: Schedule = { ...cur };
     if (fields.name !== undefined) next.name = fields.name;
-    if (fields.active !== undefined) next.active = fields.active;
     if (fields.posts_transaction !== undefined) next.posts_transaction = fields.posts_transaction;
+    if (fields.amountOp !== undefined) next.amountOp = fields.amountOp;
+    if (fields.date !== undefined) next.date = fields.date;
+    if (fields.payee !== undefined) next.payee = fields.payee;
+    if (fields.account !== undefined) next.account = fields.account;
+    if (fields.amount !== undefined) next.amount = fields.amount;
+    if (resetNextDate === true) {
+      delete next.next_date;
+    }
     this.schedules.set(id, next);
     return Promise.resolve();
   }

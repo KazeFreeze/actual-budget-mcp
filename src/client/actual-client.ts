@@ -84,20 +84,43 @@ export interface BudgetMonth {
   }>;
 }
 
+export interface ScheduleRecurConfig {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval?: number;
+  patterns?: Array<{
+    value: number;
+    type: 'SU' | 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'day';
+  }>;
+  skipWeekend?: boolean;
+  start: string;
+  endMode?: 'never' | 'after_n_occurrences' | 'on_date';
+  endOccurrences?: number;
+  endDate?: string;
+  weekendSolveMode?: 'before' | 'after';
+}
+
+export type ScheduleAmount = number | { num1: number; num2: number };
+export type ScheduleAmountOp = 'is' | 'isapprox' | 'isbetween';
+
+/**
+ * External (flat) schedule shape — matches `APIScheduleEntity` in
+ * `@actual-app/core`. NOTE: `name` is `string | undefined` (NOT
+ * `string | null`) per the SDK type. Server-managed fields (`rule`,
+ * `next_date`, `completed`) are returned by reads but should not be
+ * supplied by callers on create/update.
+ */
 export interface Schedule {
   id: string;
-  rule: string;
-  active: boolean;
-  completed: boolean;
+  name?: string;
   posts_transaction: boolean;
-  name: string | null;
-  next_date: string;
-  _date?: unknown;
-  _conditions?: unknown;
-  _actions?: unknown;
-  _account?: string | null;
-  _amount?: number;
-  _payee?: string | null;
+  rule?: string;
+  next_date?: string;
+  completed?: boolean;
+  payee?: string;
+  account?: string;
+  amount?: ScheduleAmount;
+  amountOp: ScheduleAmountOp;
+  date: ScheduleRecurConfig | string;
 }
 
 export interface Rule {
@@ -183,20 +206,13 @@ export interface ActualClient {
 
   // schedules
   getSchedules(): Promise<Schedule[]>;
-  createSchedule(input: {
-    name: string | null;
-    rule: unknown;
-    active?: boolean;
-    posts_transaction?: boolean;
-  }): Promise<string>;
+  createSchedule(input: Omit<Schedule, 'id' | 'rule' | 'next_date' | 'completed'>): Promise<string>;
+  // NOTE: SDK returns Promise<string> (the schedule id) but we discard
+  // it — matches the updateRule pattern where the caller already has the id.
   updateSchedule(
     id: string,
-    fields: {
-      name?: string | null;
-      rule?: unknown;
-      active?: boolean;
-      posts_transaction?: boolean;
-    },
+    fields: Partial<Omit<Schedule, 'id' | 'rule' | 'next_date' | 'completed'>>,
+    resetNextDate?: boolean,
   ): Promise<void>;
   deleteSchedule(id: string): Promise<void>;
 

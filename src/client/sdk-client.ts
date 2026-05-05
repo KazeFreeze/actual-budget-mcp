@@ -195,34 +195,26 @@ export class SdkActualClient implements ActualClient {
     await api.resetBudgetHold(month);
   }
 
-  // ---- schedules — read via AQL, writes via internal.send
+  // ---- schedules
   async getSchedules(): Promise<Schedule[]> {
-    // `select('*')` is supported at runtime by Actual's AQL even though the
-    // SDK type signature only allows `any[]`.
-    const res = await api.aqlQuery(api.q('schedules').select('*' as unknown as []));
-    return (res as { data: Schedule[] }).data;
+    return (await api.getSchedules()) as Schedule[];
   }
-  async createSchedule(input: {
-    name: string | null;
-    rule: unknown;
-    active?: boolean;
-    posts_transaction?: boolean;
-  }): Promise<string> {
-    return (await this.internalSend('schedule/create', { schedule: input })) as string;
+  async createSchedule(
+    input: Omit<Schedule, 'id' | 'rule' | 'next_date' | 'completed'>,
+  ): Promise<string> {
+    return api.createSchedule(input as Parameters<typeof api.createSchedule>[0]);
   }
   async updateSchedule(
     id: string,
-    fields: {
-      name?: string | null;
-      rule?: unknown;
-      active?: boolean;
-      posts_transaction?: boolean;
-    },
+    fields: Partial<Omit<Schedule, 'id' | 'rule' | 'next_date' | 'completed'>>,
+    resetNextDate?: boolean,
   ): Promise<void> {
-    await this.internalSend('schedule/update', { schedule: { id, ...fields } });
+    // SDK returns Promise<string> (the schedule id) — we discard it; the
+    // caller already has the id.
+    await api.updateSchedule(id, fields as Parameters<typeof api.updateSchedule>[1], resetNextDate);
   }
   async deleteSchedule(id: string): Promise<void> {
-    await this.internalSend('schedule/delete', { id });
+    await api.deleteSchedule(id);
   }
 
   // ---- notes (the v2 fix)
