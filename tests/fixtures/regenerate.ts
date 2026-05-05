@@ -1,6 +1,13 @@
 import { execSync } from 'node:child_process';
-// eslint-disable-next-line n/no-unsupported-features/node-builtins -- cpSync is stable since Node 22.3.0; this script runs locally on the dev machine which we control
-import { mkdtempSync, rmSync, cpSync, existsSync } from 'node:fs';
+import {
+  mkdtempSync,
+  rmSync,
+  // eslint-disable-next-line n/no-unsupported-features/node-builtins -- cpSync is stable since Node 22.3.0; this script runs locally on the dev machine which we control
+  cpSync,
+  existsSync,
+  writeFileSync,
+  readdirSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,10 +19,6 @@ const __dirname = dirname(__filename);
 const COMPOSE = join(__dirname, 'compose.yml');
 const FIXTURE_DIR = join(__dirname, 'budget-cache');
 const PASSWORD = 'fixture-password';
-
-interface InternalSendApi {
-  internal: { send: (h: string, p: unknown) => Promise<unknown> };
-}
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((res) => setTimeout(res, ms));
@@ -54,18 +57,32 @@ async function main(): Promise<void> {
     await sleep(500);
 
     const tmp = mkdtempSync(join(tmpdir(), 'actual-fixture-'));
-    await api.init({
+    const lib = await api.init({
       dataDir: tmp,
       serverURL: 'http://localhost:5006',
       password: PASSWORD,
     });
 
-    const internal = api as unknown as InternalSendApi;
-
-    // Create a fresh budget — uses internal.send
-    const syncId = (await internal.internal.send('create-budget', {
+    // Create a fresh budget — uses the lib.send returned from init
+    // (the deprecated `api.internal` export is null until first use)
+    const send = lib.send as unknown as (h: string, p: unknown) => Promise<unknown>;
+    const syncId = (await send('create-budget', {
       budgetName: 'fixture-budget',
     })) as string;
+
+    // create-budget seeds the budget with a default category template
+    // (Usual Expenses → Food/General/Bills/etc, Income, Investments and
+    // Savings). Delete any defaults whose names would collide with the
+    // categories we're about to create so getCategories().find(name === ...)
+    // resolves uniquely in integration tests.
+    const ourCategoryNames = new Set(['Food', 'Transport']);
+    const existing = await api.getCategories();
+    for (const c of existing) {
+      // Only APICategoryEntity has group_id; APICategoryGroupEntity does not
+      if ('group_id' in c && ourCategoryNames.has(c.name)) {
+        await api.deleteCategory(c.id);
+      }
+    }
 
     // Populate minimal dataset
     const groupId = await api.createCategoryGroup({ name: 'Spending' });
@@ -95,7 +112,7 @@ async function main(): Promise<void> {
         payee_name: 'Salary',
       },
     ]);
-    await internal.internal.send('notes-save', {
+    await send('notes-save', {
       id: cat1,
       note: 'fixture note on Food',
     });
@@ -106,7 +123,21 @@ async function main(): Promise<void> {
     if (existsSync(FIXTURE_DIR)) rmSync(FIXTURE_DIR, { recursive: true });
     cpSync(tmp, FIXTURE_DIR, { recursive: true });
     rmSync(tmp, { recursive: true });
-    console.log(`Fixture regenerated at ${FIXTURE_DIR} (syncId=${syncId})`);
+
+    // The SDK only writes metadata.json on subsequent prefs changes, not at
+    // budget creation. getBudgets() requires it (parses JSON; null entries are
+    // filtered out), so write a minimal valid prefs file post-copy so
+    // integration tests can discover the budget.
+    const budgetSubdirs = readdirSync(FIXTURE_DIR, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+    for (const budgetId of budgetSubdirs) {
+      const metadataPath = join(FIXTURE_DIR, budgetId, 'metadata.json');
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is constructed from FIXTURE_DIR + names we just listed
+      writeFileSync(metadataPath, JSON.stringify({ id: budgetId, budgetName: 'fixture-budget' }));
+    }
+
+    console.log(`Fixture regenerated at ${FIXTURE_DIR} (syncId=${JSON.stringify(syncId)})`);
   } finally {
     execSync(`docker compose -f ${COMPOSE} down -v`, { stdio: 'inherit' });
   }
