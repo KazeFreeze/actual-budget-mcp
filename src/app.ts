@@ -1,19 +1,30 @@
 import type pino from 'pino';
 import type { Express } from 'express';
 import type { Config } from './config.js';
+import type { ActualClient } from './client/actual-client.js';
+import type { SyncCoalescer } from './client/sync-coalescer.js';
 import { createMcpServer } from './server.js';
-import { createAuthMiddleware } from './auth.js';
+import { createAuthMiddleware, originAllowlist } from './auth.js';
+import { mountHealth } from './health.js';
+
+export interface AppDeps {
+  config: Config;
+  client: ActualClient;
+  coalescer: SyncCoalescer;
+  sdkInitialized: () => boolean;
+  logger: pino.Logger;
+  version: string;
+}
 
 export async function createApp(
-  config: Config,
-  logger: pino.Logger,
+  deps: AppDeps,
 ): Promise<{ app: Express; cleanup: () => Promise<void> }> {
+  const { config, client, coalescer, sdkInitialized, logger, version } = deps;
   const express = (await import('express')).default;
   const helmet = (await import('helmet')).default;
   const { rateLimit } = await import('express-rate-limit');
   const app = express();
 
-  // Parse JSON bodies — skip for SSE /messages route (transport reads raw stream)
   app.use((req, res, next) => {
     if (req.path === '/messages') {
       next();
@@ -23,60 +34,56 @@ export async function createApp(
   });
 
   app.use(helmet({ contentSecurityPolicy: false }));
+  app.use(originAllowlist(config.mcpAllowedOrigins));
 
   const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 100,
+    windowMs: 60_000,
+    limit: config.mcpRateLimitPerMin,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    message: { error: 'Too many requests, please try again later' },
+    keyGenerator: (req) =>
+      (req as unknown as { callerKey?: string }).callerKey ?? req.ip ?? 'anonymous',
+    message: { error: 'Too many requests' },
   });
-  app.use(limiter);
 
-  if (config.mcpAuthToken) {
-    const auth = createAuthMiddleware(config.mcpAuthToken);
+  // Mount /health BEFORE auth so it's reachable for Docker healthcheck.
+  mountHealth(app, { coalescer, sdkInitialized, syncId: config.budgetSyncId, version });
+
+  if (config.mcpApiKeys.length > 0) {
+    const auth = createAuthMiddleware(config.mcpApiKeys);
     app.use((req, res, next) => {
-      // Skip auth for health check and MCP OAuth discovery flow
-      // SDK probes /.well-known/oauth-authorization-server then POST /register
-      // Let them 404 naturally so SDK falls back to custom headers
-      if (
-        req.path === '/health' ||
-        req.path.startsWith('/.well-known/') ||
-        req.path === '/register' ||
-        req.path === '/authorize' ||
-        req.path === '/token'
-      ) {
+      if (req.path === '/health') {
         next();
         return;
       }
       auth(req, res, next);
     });
   }
-
-  const { client: healthClient } = createMcpServer({ config });
-
-  app.get('/health', async (_req, res) => {
-    const healthy = await healthClient.checkHealth();
-    res.status(healthy ? 200 : 503).json({ status: healthy ? 'ok' : 'unhealthy' });
+  app.use((req, res, next) => {
+    if (req.path === '/health') next();
+    else limiter(req, res, next);
   });
 
   let cleanup = async (): Promise<void> => {};
 
   if (config.mcpTransport === 'sse') {
+    logger.warn(
+      'SSE transport is deprecated and will be removed in v2.1; migrate to Streamable HTTP at /mcp',
+    );
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     const { SSEServerTransport } = await import('@modelcontextprotocol/sdk/server/sse.js');
     const transports = new Map<string, InstanceType<typeof SSEServerTransport>>();
 
+    const setSunsetHeaders = (res: Parameters<Parameters<typeof app.get>[1]>[1]): void => {
+      res.setHeader('Deprecation', 'true');
+      res.setHeader('Sunset', 'Sat, 01 Aug 2026 00:00:00 GMT');
+    };
+
     app.get('/sse', async (_req, res) => {
-      // Fresh Server per connection: SDK's Server.connect throws if a Server
-      // instance is reused across transports.
-      const { server: sessionServer } = createMcpServer({ config });
+      setSunsetHeaders(res);
+      const sessionServer = createMcpServer({ config, client, coalescer, logger });
       const transport = new SSEServerTransport('/messages', res);
       transports.set(transport.sessionId, transport);
-
-      // SSE comment heartbeat: prevents Cloudflare/Traefik from dropping
-      // idle TCP connections (Cloudflare's edge times out around 100s).
-      // Comments (lines starting with ':') are ignored by SSE parsers.
       const ping = setInterval(() => {
         if (!res.writable) {
           clearInterval(ping);
@@ -88,7 +95,6 @@ export async function createApp(
           clearInterval(ping);
         }
       }, 25_000);
-
       res.on('close', () => {
         clearInterval(ping);
         transports.delete(transport.sessionId);
@@ -98,6 +104,7 @@ export async function createApp(
     });
 
     app.post('/messages', async (req, res) => {
+      setSunsetHeaders(res);
       const sessionId = req.query['sessionId'] as string;
       const transport = transports.get(sessionId);
       if (!transport) {
@@ -107,26 +114,69 @@ export async function createApp(
       await transport.handlePostMessage(req, res);
     });
   } else {
-    try {
-      const { StreamableHTTPServerTransport } =
-        await import('@modelcontextprotocol/sdk/server/streamableHttp.js');
-      const { server } = createMcpServer({ config });
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-      });
-      await server.connect(transport);
+    const { StreamableHTTPServerTransport } =
+      await import('@modelcontextprotocol/sdk/server/streamableHttp.js');
+    const { randomUUID } = await import('node:crypto');
 
-      app.all('/mcp', async (req, res) => {
-        await transport.handleRequest(req, res);
-      });
+    // Per-session server + transport pairs.
+    //
+    // A SINGLE shared StreamableHTTPServerTransport cannot be reused across
+    // multiple clients: in stateless mode it throws after the first request
+    // ("Stateless transport cannot be reused"), and in stateful mode it
+    // rejects every subsequent `initialize` ("Server already initialized").
+    // The correct pattern (mirrored from the SSE branch above) is to spin
+    // up a fresh server+transport per session, keyed by the SDK-generated
+    // session id, and dispatch incoming requests by Mcp-Session-Id header.
+    type Transport = InstanceType<typeof StreamableHTTPServerTransport>;
+    const sessions = new Map<
+      string,
+      { transport: Transport; server: ReturnType<typeof createMcpServer> }
+    >();
 
-      cleanup = async (): Promise<void> => {
-        await server.close();
-      };
-    } catch {
-      logger.error('StreamableHTTPServerTransport not available in this SDK version');
-      process.exit(1);
-    }
+    app.all('/mcp', async (req, res) => {
+      const sessionHeader = req.headers['mcp-session-id'];
+      const sessionId = Array.isArray(sessionHeader) ? sessionHeader[0] : sessionHeader;
+
+      let entry = sessionId ? sessions.get(sessionId) : undefined;
+
+      if (!entry) {
+        // No (or unknown) session — must be an `initialize` request. The
+        // transport will assign a session id during handleRequest and emit
+        // it via the `onsessioninitialized` callback so we can route
+        // subsequent requests for this session.
+        const sessionServer = createMcpServer({ config, client, coalescer, logger });
+        const sessionTransport: Transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          onsessioninitialized: (sid: string) => {
+            sessions.set(sid, { transport: sessionTransport, server: sessionServer });
+          },
+          onsessionclosed: (sid: string) => {
+            sessions.delete(sid);
+            void sessionServer.close();
+          },
+        });
+        // Cast: SDK's transport declares `onclose: (() => void) | undefined`
+        // but the Transport interface uses `onclose?: () => void`. Under
+        // `exactOptionalPropertyTypes` these are incompatible despite being
+        // structurally equivalent.
+        await sessionServer.connect(
+          sessionTransport as Parameters<typeof sessionServer.connect>[0],
+        );
+        entry = { transport: sessionTransport, server: sessionServer };
+      }
+
+      // Pass `req.body` explicitly: express.json() (mounted above) consumes
+      // the underlying request stream, so the SDK cannot re-read it.
+      await entry.transport.handleRequest(req, res, req.body);
+    });
+
+    cleanup = async (): Promise<void> => {
+      // Tear down every still-open session on shutdown so no MCP server
+      // instance leaks (each holds a reference to the SDK client/coalescer).
+      const closes = Array.from(sessions.values()).map(({ server: s }) => s.close());
+      sessions.clear();
+      await Promise.allSettled(closes);
+    };
   }
 
   return { app, cleanup };

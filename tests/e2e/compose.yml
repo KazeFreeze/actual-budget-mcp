@@ -1,0 +1,31 @@
+# E2E Docker Compose stack.
+#
+# Brings up actual-server + the v2 MCP server image (`actual-budget-mcp:e2e`,
+# built by the test harness's beforeAll). Both ports are exposed to the host
+# so the bootstrap helper (5006) and smoke tests (3000) can reach them.
+#
+# Sync ID and API key are injected via env vars from the harness — never
+# hard-coded here, as the sync ID only exists after the bootstrap creates a
+# budget on actual-server.
+services:
+  actual-server:
+    image: actualbudget/actual-server:latest
+    ports:
+      - "5006:5006"
+    environment:
+      ACTUAL_LOGIN_METHOD: password
+      ACTUAL_PORT: 5006
+  actual-mcp:
+    image: actual-budget-mcp:e2e
+    depends_on:
+      - actual-server
+    environment:
+      ACTUAL_SERVER_URL: http://actual-server:5006
+      ACTUAL_SERVER_PASSWORD: e2e-password
+      ACTUAL_BUDGET_SYNC_ID: ${E2E_SYNC_ID}
+      MCP_API_KEYS: ${E2E_API_KEY}
+      MCP_TRANSPORT: http
+      MCP_PORT: "3000"
+      LOG_LEVEL: info
+    ports:
+      - "3000:3000"

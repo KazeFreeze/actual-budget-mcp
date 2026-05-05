@@ -1,64 +1,7 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import {
-  ListPromptsRequestSchema,
-  GetPromptRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 
-const PROMPTS = [
-  {
-    name: 'financial-health-check',
-    description:
-      'Guided financial health analysis: savings rate, spending patterns, budget adherence, and actionable recommendations.',
-  },
-  {
-    name: 'budget-review',
-    description:
-      'Monthly budget review: overspent/underspent categories, top spending areas, and suggestions for next month.',
-    arguments: [
-      {
-        name: 'month',
-        description: 'Month to review in YYYY-MM format. Defaults to the current month.',
-        required: false,
-      },
-    ],
-  },
-  {
-    name: 'spending-deep-dive',
-    description:
-      'Deep dive into spending for a specific category or time period with trend analysis and comparisons.',
-    arguments: [
-      {
-        name: 'category',
-        description: 'Category name to analyze (e.g. "Groceries", "Dining Out").',
-        required: false,
-      },
-      {
-        name: 'period',
-        description: 'Time period to analyze (e.g. "2024-Q1", "last 3 months", "2024-06").',
-        required: false,
-      },
-    ],
-  },
-  {
-    name: 'actualql-reference',
-    description:
-      'Full ActualQL query language reference with syntax, operators, examples, and best practices.',
-  },
-];
-
-function getPromptMessages(
-  name: string,
-  args: Record<string, string> | undefined,
-): { messages: Array<{ role: 'user'; content: { type: 'text'; text: string } }> } {
-  switch (name) {
-    case 'financial-health-check':
-      return {
-        messages: [
-          {
-            role: 'user',
-            content: {
-              type: 'text',
-              text: `Please perform a comprehensive financial health check on my budget. Follow these steps:
+const FINANCIAL_HEALTH_CHECK_TEXT = `Please perform a comprehensive financial health check on my budget. Follow these steps:
 
 1. **Net Worth Snapshot** -- Use the net-worth-snapshot tool to see all account balances and total net worth.
 
@@ -78,98 +21,9 @@ function getPromptMessages(
 
 7. **Recommendations** -- Based on all findings, provide 3-5 specific, actionable recommendations to improve financial health. Prioritize by potential impact.
 
-Present the analysis in a clear, structured format with sections for each area. Use the actual numbers from the budget data.`,
-            },
-          },
-        ],
-      };
+Present the analysis in a clear, structured format with sections for each area. Use the actual numbers from the budget data.`;
 
-    case 'budget-review': {
-      const month = args?.month ?? 'the current month';
-      return {
-        messages: [
-          {
-            role: 'user',
-            content: {
-              type: 'text',
-              text: `Please perform a detailed budget review for ${month}. Follow these steps:
-
-1. **Budget Overview** -- Use get-budget-month for ${month} to see all budgeted amounts, spending, and balances.
-
-2. **Variance Analysis** -- Use budget-variance-report for ${month}. Identify:
-   - Categories that are overspent (negative balance)
-   - Categories significantly underspent (more than 50% remaining)
-   - Categories on track
-
-3. **Top Spending** -- Use monthly-financial-summary for ${month}. List the top 5 categories by spending amount.
-
-4. **Income vs Expenses** -- Calculate the overall income-to-expense ratio for the month.
-
-5. **Category-by-Category Notes** -- For each overspent category:
-   - How much over budget?
-   - Is this a recurring pattern? (Check trend-analysis if needed)
-   - Suggested adjustment for next month
-
-6. **Suggestions for Next Month** -- Based on the review:
-   - Which budget amounts should be adjusted?
-   - Are there categories where money could be reallocated?
-   - Any categories that should be added or removed?
-
-Present findings as a structured report with clear section headers.`,
-            },
-          },
-        ],
-      };
-    }
-
-    case 'spending-deep-dive': {
-      const category = args?.category ?? 'all categories';
-      const period = args?.period ?? 'the last 3 months';
-      return {
-        messages: [
-          {
-            role: 'user',
-            content: {
-              type: 'text',
-              text: `Please perform a deep dive analysis on spending for ${category} over ${period}. Follow these steps:
-
-1. **Current Spending** -- Use spending-analysis filtered to ${category} for the specified period. Show total amount and transaction count.
-
-2. **Transaction Details** -- Use run-query to fetch individual transactions for ${category} in this period. Look for:
-   - Largest single transactions
-   - Most frequent payees
-   - Any unusual or unexpected charges
-
-3. **Trend Over Time** -- Use trend-analysis focused on ${category}. Show month-over-month changes.
-   - Is spending increasing, decreasing, or stable?
-   - Are there seasonal patterns?
-   - Flag any anomalous months
-
-4. **Comparison** -- Use spending-analysis with comparison to show how this period compares to the prior equivalent period (e.g., this month vs last month, this quarter vs last quarter).
-
-5. **Payee Breakdown** -- Use spending-analysis grouped by payee, filtered to ${category}. Show which payees account for the most spending.
-
-6. **Insights & Actions** -- Based on the analysis:
-   - What is driving the spending in this category?
-   - Are there opportunities to reduce spending?
-   - Should the budget for this category be adjusted?
-   - Are there any subscriptions or recurring charges to review?
-
-Present findings with clear data tables and specific actionable insights.`,
-            },
-          },
-        ],
-      };
-    }
-
-    case 'actualql-reference':
-      return {
-        messages: [
-          {
-            role: 'user',
-            content: {
-              type: 'text',
-              text: `Here is the complete ActualQL query language reference for querying Actual Budget data via the run-query tool.
+const ACTUALQL_REFERENCE_TEXT = `Here is the complete ActualQL query language reference for querying Actual Budget data via the run-query tool.
 
 ## Tables
 
@@ -308,25 +162,151 @@ Return a single aggregate without grouping:
 }
 \`\`\`
 
-Use this reference to construct accurate ActualQL queries with the run-query tool. Amounts are stored in cents (e.g., -5000 = -$50.00). Expenses are negative, income is positive.`,
-            },
-          },
-        ],
-      };
+Use this reference to construct accurate ActualQL queries with the run-query tool. Amounts are stored in cents (e.g., -5000 = -$50.00). Expenses are negative, income is positive.`;
 
-    default:
-      throw new Error(`Unknown prompt: ${name}`);
-  }
+function budgetReviewText(month: string): string {
+  return `Please perform a detailed budget review for ${month}. Follow these steps:
+
+1. **Budget Overview** -- Use get-budget-month for ${month} to see all budgeted amounts, spending, and balances.
+
+2. **Variance Analysis** -- Use budget-variance-report for ${month}. Identify:
+   - Categories that are overspent (negative balance)
+   - Categories significantly underspent (more than 50% remaining)
+   - Categories on track
+
+3. **Top Spending** -- Use monthly-financial-summary for ${month}. List the top 5 categories by spending amount.
+
+4. **Income vs Expenses** -- Calculate the overall income-to-expense ratio for the month.
+
+5. **Category-by-Category Notes** -- For each overspent category:
+   - How much over budget?
+   - Is this a recurring pattern? (Check trend-analysis if needed)
+   - Suggested adjustment for next month
+
+6. **Suggestions for Next Month** -- Based on the review:
+   - Which budget amounts should be adjusted?
+   - Are there categories where money could be reallocated?
+   - Any categories that should be added or removed?
+
+Present findings as a structured report with clear section headers.`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-deprecated
-export function setupPrompts(server: Server): void {
-  server.setRequestHandler(ListPromptsRequestSchema, () => ({
-    prompts: PROMPTS,
-  }));
+function spendingDeepDiveText(category: string, period: string): string {
+  return `Please perform a deep dive analysis on spending for ${category} over ${period}. Follow these steps:
 
-  server.setRequestHandler(GetPromptRequestSchema, (request) => {
-    const { name, arguments: args } = request.params;
-    return getPromptMessages(name, args);
-  });
+1. **Current Spending** -- Use spending-analysis filtered to ${category} for the specified period. Show total amount and transaction count.
+
+2. **Transaction Details** -- Use run-query to fetch individual transactions for ${category} in this period. Look for:
+   - Largest single transactions
+   - Most frequent payees
+   - Any unusual or unexpected charges
+
+3. **Trend Over Time** -- Use trend-analysis focused on ${category}. Show month-over-month changes.
+   - Is spending increasing, decreasing, or stable?
+   - Are there seasonal patterns?
+   - Flag any anomalous months
+
+4. **Comparison** -- Use spending-analysis with comparison to show how this period compares to the prior equivalent period (e.g., this month vs last month, this quarter vs last quarter).
+
+5. **Payee Breakdown** -- Use spending-analysis grouped by payee, filtered to ${category}. Show which payees account for the most spending.
+
+6. **Insights & Actions** -- Based on the analysis:
+   - What is driving the spending in this category?
+   - Are there opportunities to reduce spending?
+   - Should the budget for this category be adjusted?
+   - Are there any subscriptions or recurring charges to review?
+
+Present findings with clear data tables and specific actionable insights.`;
+}
+
+export function setupPrompts(server: McpServer): void {
+  server.registerPrompt(
+    'financial-health-check',
+    {
+      title: 'Financial Health Check',
+      description:
+        'Guided financial health analysis: savings rate, spending patterns, budget adherence, and actionable recommendations.',
+    },
+    () => ({
+      messages: [
+        {
+          role: 'user',
+          content: { type: 'text', text: FINANCIAL_HEALTH_CHECK_TEXT },
+        },
+      ],
+    }),
+  );
+
+  server.registerPrompt(
+    'budget-review',
+    {
+      title: 'Budget Review',
+      description:
+        'Monthly budget review: overspent/underspent categories, top spending areas, and suggestions for next month.',
+      argsSchema: {
+        month: z
+          .string()
+          .optional()
+          .describe('Month to review in YYYY-MM format. Defaults to the current month.'),
+      },
+    },
+    ({ month }) => ({
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: budgetReviewText(month ?? 'the current month'),
+          },
+        },
+      ],
+    }),
+  );
+
+  server.registerPrompt(
+    'spending-deep-dive',
+    {
+      title: 'Spending Deep Dive',
+      description:
+        'Deep dive into spending for a specific category or time period with trend analysis and comparisons.',
+      argsSchema: {
+        category: z
+          .string()
+          .optional()
+          .describe('Category name to analyze (e.g. "Groceries", "Dining Out").'),
+        period: z
+          .string()
+          .optional()
+          .describe('Time period to analyze (e.g. "2024-Q1", "last 3 months", "2024-06").'),
+      },
+    },
+    ({ category, period }) => ({
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: spendingDeepDiveText(category ?? 'all categories', period ?? 'the last 3 months'),
+          },
+        },
+      ],
+    }),
+  );
+
+  server.registerPrompt(
+    'actualql-reference',
+    {
+      title: 'ActualQL Reference',
+      description:
+        'Full ActualQL query language reference with syntax, operators, examples, and best practices.',
+    },
+    () => ({
+      messages: [
+        {
+          role: 'user',
+          content: { type: 'text', text: ACTUALQL_REFERENCE_TEXT },
+        },
+      ],
+    }),
+  );
 }

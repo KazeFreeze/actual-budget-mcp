@@ -1,48 +1,30 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import pino from 'pino';
+import { createMcpServer } from '../src/server.js';
+import { FakeActualClient } from '../src/client/fake-client.js';
+import { SyncCoalescer } from '../src/client/sync-coalescer.js';
+import type { Config } from '../src/config.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type RequestHandler = (...args: any[]) => Promise<any>;
+const cfg: Config = {
+  actualServerUrl: 'http://x',
+  actualServerPassword: 'p',
+  budgetSyncId: 's',
+  mcpApiKeys: [],
+  mcpAllowedOrigins: [],
+  mcpTransport: 'stdio',
+  mcpPort: 3000,
+  mcpRateLimitPerMin: 120,
+  mcpDataDir: '/tmp',
+  currencySymbol: '$',
+  logLevel: 'info',
+};
 
 describe('createMcpServer', () => {
-  it('should create server with all tools registered', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ data: { version: '26.4.0' } }), { status: 200 }),
-    );
-
-    const { createMcpServer } = await import('../src/server.js');
-    const { server } = createMcpServer({
-      config: {
-        actualHttpApiUrl: 'http://localhost:5007',
-        actualHttpApiKey: 'test-key',
-        budgetSyncId: 'test-budget',
-        mcpTransport: 'stdio' as const,
-        mcpPort: 3001,
-        currencySymbol: '$',
-        logLevel: 'info' as const,
-      },
-    });
-
+  it('constructs with all tool groups registered', () => {
+    const client = new FakeActualClient();
+    const coalescer = new SyncCoalescer(client, 2000);
+    const logger = pino({ level: 'silent' });
+    const server = createMcpServer({ config: cfg, client, coalescer, logger });
     expect(server).toBeDefined();
-  });
-});
-
-describe('prompts', () => {
-  it('should export 4 prompts', async () => {
-    const { setupPrompts } = await import('../src/prompts.js');
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    const { Server } = await import('@modelcontextprotocol/sdk/server/index.js');
-    const server = new Server(
-      { name: 'test', version: '0.0.1' },
-      { capabilities: { prompts: {} } },
-    );
-
-    setupPrompts(server);
-
-    // Verify handler was registered
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call
-    const handler = (server as any)._requestHandlers?.get('prompts/list') as
-      | RequestHandler
-      | undefined;
-    expect(handler).toBeDefined();
   });
 });

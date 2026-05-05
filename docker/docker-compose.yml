@@ -1,3 +1,7 @@
+# Local-development compose: builds the MCP image from the worktree's Dockerfile
+# instead of pulling from GHCR. For production deploys use
+# docker-compose.production.yml.
+
 services:
   actual-budget:
     image: actualbudget/actual-server:latest
@@ -8,39 +12,26 @@ services:
     networks:
       - actual-network
 
-  actual-http-api:
-    image: jhonderson/actual-http-api:latest
-    environment:
-      - ACTUAL_SERVER_URL=http://actual-budget:5006
-      - ACTUAL_SERVER_PASSWORD=${ACTUAL_SERVER_PASSWORD}
-      - API_KEY=${API_KEY}
-    depends_on:
-      - actual-budget
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5007/v1/actualhttpapiversion"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    networks:
-      - actual-network
-
   actual-mcp:
     build: ../
     ports:
-      - "127.0.0.1:3001:3001"
+      - "127.0.0.1:3000:3000"
     environment:
-      - ACTUAL_HTTP_API_URL=http://actual-http-api:5007
-      - ACTUAL_HTTP_API_KEY=${API_KEY}
+      - ACTUAL_SERVER_URL=http://actual-budget:5006
+      - ACTUAL_SERVER_PASSWORD=${ACTUAL_SERVER_PASSWORD}
       - ACTUAL_BUDGET_SYNC_ID=${ACTUAL_BUDGET_SYNC_ID}
-      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN}
-      - MCP_TRANSPORT=sse
-      - MCP_PORT=3001
+      - ACTUAL_BUDGET_ENCRYPTION_PASSWORD=${ACTUAL_BUDGET_ENCRYPTION_PASSWORD:-}
+      - MCP_API_KEYS=${MCP_API_KEYS}
+      - MCP_ALLOWED_ORIGINS=${MCP_ALLOWED_ORIGINS:-}
+      - MCP_TRANSPORT=http
+      - MCP_PORT=3000
       - LOG_LEVEL=info
     depends_on:
-      actual-http-api:
-        condition: service_healthy
+      - actual-budget
+    volumes:
+      - actual-mcp-cache:/var/lib/actual-mcp
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -49,6 +40,7 @@ services:
 
 volumes:
   actual-data:
+  actual-mcp-cache:
 
 networks:
   actual-network:

@@ -1,48 +1,19 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import {
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-import type { ActualClient } from './client.js';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { ActualClient } from './client/actual-client.js';
 import { formatAmount, formatMarkdownTable } from './format.js';
 
-const RESOURCES = [
-  {
-    uri: 'actual://accounts',
-    name: 'Accounts',
-    description: 'All budget accounts with their types and current balances.',
-    mimeType: 'text/markdown',
-  },
-  {
-    uri: 'actual://categories',
-    name: 'Categories',
-    description: 'Full category tree including groups and individual categories.',
-    mimeType: 'text/markdown',
-  },
-  {
-    uri: 'actual://payees',
-    name: 'Payees',
-    description: 'All payees used in transactions.',
-    mimeType: 'text/markdown',
-  },
-  {
-    uri: 'actual://budget-settings',
-    name: 'Budget Settings',
-    description: 'Budget configuration including currency format.',
-    mimeType: 'text/markdown',
-  },
-];
-
 async function readAccounts(client: ActualClient, currencySymbol: string): Promise<string> {
-  const accountsResult = await client.getAccounts();
-  if (!accountsResult.ok) throw new Error(`Failed to fetch accounts: ${accountsResult.error}`);
-
-  const accounts = accountsResult.data;
+  const accounts = await client.getAccounts();
   const rows: string[][] = [];
 
   for (const account of accounts) {
-    const balanceResult = await client.getAccountBalance(account.id);
-    const balance = balanceResult.ok ? formatAmount(balanceResult.data, currencySymbol) : 'N/A';
+    let balance: string;
+    try {
+      const value = await client.getAccountBalance(account.id);
+      balance = formatAmount(value, currencySymbol);
+    } catch {
+      balance = 'N/A';
+    }
     const type = account.offbudget ? 'Off Budget' : 'On Budget';
     const status = account.closed ? 'Closed' : 'Open';
     rows.push([account.name, type, status, balance]);
@@ -59,12 +30,10 @@ async function readAccounts(client: ActualClient, currencySymbol: string): Promi
 }
 
 async function readCategories(client: ActualClient): Promise<string> {
-  const result = await client.getCategoryGroups();
-  if (!result.ok) throw new Error(`Failed to fetch category groups: ${result.error}`);
-
+  const groups = await client.getCategoryGroups();
   const lines: string[] = ['# Categories'];
 
-  for (const group of result.data) {
+  for (const group of groups) {
     const groupLabel = group.is_income ? `${group.name} (Income)` : group.name;
     lines.push(`\n## ${groupLabel}`);
 
@@ -81,10 +50,8 @@ async function readCategories(client: ActualClient): Promise<string> {
 }
 
 async function readPayees(client: ActualClient): Promise<string> {
-  const result = await client.getPayees();
-  if (!result.ok) throw new Error(`Failed to fetch payees: ${result.error}`);
-
-  const regularPayees = result.data.filter((p) => !p.transfer_acct);
+  const payees = await client.getPayees();
+  const regularPayees = payees.filter((p) => !p.transfer_acct);
   const rows = regularPayees.map((p) => [p.name]);
 
   const table = formatMarkdownTable(['Payee'], rows, ['left']);
@@ -95,42 +62,84 @@ function readBudgetSettings(currencySymbol: string): string {
   return `# Budget Settings\n\n- **Currency Symbol:** ${currencySymbol}`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-deprecated
-export function setupResources(server: Server, client: ActualClient, currencySymbol: string): void {
-  server.setRequestHandler(ListResourcesRequestSchema, () => {
-    return { resources: RESOURCES };
-  });
-
-  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-    const { uri } = request.params;
-
-    let text: string;
-
-    switch (uri) {
-      case 'actual://accounts':
-        text = await readAccounts(client, currencySymbol);
-        break;
-      case 'actual://categories':
-        text = await readCategories(client);
-        break;
-      case 'actual://payees':
-        text = await readPayees(client);
-        break;
-      case 'actual://budget-settings':
-        text = readBudgetSettings(currencySymbol);
-        break;
-      default:
-        throw new Error(`Unknown resource URI: ${uri}`);
-    }
-
-    return {
+export function setupResources(
+  server: McpServer,
+  client: ActualClient,
+  currencySymbol: string,
+): void {
+  server.registerResource(
+    'accounts',
+    'actual://accounts',
+    {
+      title: 'Accounts',
+      description: 'All budget accounts with their types and current balances.',
+      mimeType: 'text/markdown',
+    },
+    async (uri) => ({
       contents: [
         {
-          uri,
+          uri: uri.toString(),
           mimeType: 'text/markdown',
-          text,
+          text: await readAccounts(client, currencySymbol),
         },
       ],
-    };
-  });
+    }),
+  );
+
+  server.registerResource(
+    'categories',
+    'actual://categories',
+    {
+      title: 'Categories',
+      description: 'Full category tree including groups and individual categories.',
+      mimeType: 'text/markdown',
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.toString(),
+          mimeType: 'text/markdown',
+          text: await readCategories(client),
+        },
+      ],
+    }),
+  );
+
+  server.registerResource(
+    'payees',
+    'actual://payees',
+    {
+      title: 'Payees',
+      description: 'All payees used in transactions.',
+      mimeType: 'text/markdown',
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.toString(),
+          mimeType: 'text/markdown',
+          text: await readPayees(client),
+        },
+      ],
+    }),
+  );
+
+  server.registerResource(
+    'budget-settings',
+    'actual://budget-settings',
+    {
+      title: 'Budget Settings',
+      description: 'Budget configuration including currency format.',
+      mimeType: 'text/markdown',
+    },
+    (uri) => ({
+      contents: [
+        {
+          uri: uri.toString(),
+          mimeType: 'text/markdown',
+          text: readBudgetSettings(currencySymbol),
+        },
+      ],
+    }),
+  );
 }

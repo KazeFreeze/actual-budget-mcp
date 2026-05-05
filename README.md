@@ -2,20 +2,23 @@
 
 An [MCP](https://modelcontextprotocol.io/) server for [Actual Budget](https://actualbudget.org/) that provides AI assistants with tools to read, write, and analyze your budget data.
 
-Connects through [actual-http-api](https://github.com/jhonderson/actual-http-api) as a proxy layer, deploys as a Docker sidecar alongside your existing Actual Budget instance.
+Connects directly to your Actual Budget sync server using the official `@actual-app/api` SDK, deploys as a Docker sidecar.
 
 ## Features
 
-- **19 CRUD tools** -- accounts, transactions, categories, payees, budget months, schedules, rules, notes, bank sync
-- **6 analytical reports** -- monthly summary, spending analysis, budget variance, trend analysis, net worth snapshot, income/expense timeline
-- **Raw query power** -- `run-query` tool with full ActualQL support (filters, aggregates, joins, grouping)
+- **52 tools** -- accounts, transactions, categories, payees, budget months, schedules, rules, notes, tags, utility, and ActualQL query
+- **Tags CRUD (NEW in v2)** -- full create/read/update/delete for transaction tags
+- **Notes (read/write/delete)** -- now functional, was broken in v1
+- **Raw query power** -- `query` tool with full ActualQL support (filters, aggregates, joins, grouping)
 - **4 MCP resources** -- accounts, categories, payees, budget settings
 - **4 guided prompts** -- financial health check, budget review, spending deep dive, ActualQL reference
 - **Markdown output** -- formatted tables, split transaction rendering, 34-38% fewer tokens than JSON
-- **Multiple transports** -- stdio (local), SSE (remote), Streamable HTTP
-- **Security** -- bearer token auth, helmet headers, rate limiting, constant-time token comparison
+- **Multiple transports** -- stdio (local), Streamable HTTP (remote, recommended), SSE (deprecated, removal targeted v2.1)
+- **Security** -- multi-key Bearer rotation with entropy enforcement (≥32 chars, ≥16 unique chars), Origin allowlist, helmet headers, per-IP rate limiting, audit logger with sha256 caller-key prefix
 
 ## Quick Start
+
+> **Upgrading from v1?** See [`docs/MIGRATION-v1-to-v2.md`](docs/MIGRATION-v1-to-v2.md) for the breaking-change guide (env var renames, port change `3001` → `3000`, removal of the `actual-http-api` sidecar).
 
 ### Docker Compose (recommended)
 
@@ -24,20 +27,18 @@ Connects through [actual-http-api](https://github.com/jhonderson/actual-http-api
 git clone https://github.com/KazeFreeze/actual-budget-mcp.git
 cd actual-budget-mcp
 
-# Configure environment
+# Configure environment (uses the v2 var names: ACTUAL_SERVER_URL,
+# ACTUAL_SERVER_PASSWORD, ACTUAL_BUDGET_SYNC_ID, MCP_API_KEYS, ...)
 cp .env.example .env
-# Edit .env with your Actual Budget credentials
 
 # Start the full stack
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.production.yml up -d
 ```
 
 ### Using the published image
 
 ```bash
 docker pull ghcr.io/kazefreeze/actual-budget-mcp:latest
-
-# Or use the production compose file
 docker compose -f docker/docker-compose.production.yml up -d
 ```
 
@@ -52,27 +53,31 @@ npm run dev
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `ACTUAL_HTTP_API_URL` | Yes | -- | URL of your actual-http-api instance |
-| `ACTUAL_HTTP_API_KEY` | Yes | -- | API key for actual-http-api |
-| `ACTUAL_BUDGET_SYNC_ID` | Yes | -- | Budget sync ID (Settings > Advanced > Sync ID) |
-| `MCP_AUTH_TOKEN` | No | -- | Bearer token for remote transport auth |
-| `MCP_TRANSPORT` | No | `stdio` | Transport mode: `stdio`, `sse`, or `http` |
-| `MCP_PORT` | No | `3001` | Port for SSE/HTTP transport |
+| `ACTUAL_SERVER_URL` | Yes | -- | Actual sync-server URL (e.g. `http://actual-budget:5006`) |
+| `ACTUAL_SERVER_PASSWORD` | Yes | -- | actual-server login password |
+| `ACTUAL_BUDGET_SYNC_ID` | Yes | -- | Budget sync ID (Settings → Advanced → Sync ID) |
+| `ACTUAL_BUDGET_ENCRYPTION_PASSWORD` | If E2EE | -- | Encryption password (only for E2EE-encrypted budgets) |
+| `MCP_API_KEYS` | http/sse | -- | Comma-separated bearer tokens. **Each ≥32 chars and ≥16 unique chars.** |
+| `MCP_ALLOWED_ORIGINS` | No | -- | Comma-separated allowed `Origin` headers (recommended in production) |
+| `MCP_TRANSPORT` | No | `stdio` | Transport mode: `stdio`, `http`, or `sse` (deprecated) |
+| `MCP_PORT` | No | `3000` | Port for http/sse transport |
+| `MCP_RATE_LIMIT_PER_MIN` | No | `120` | Per-IP rate limit (http/sse) |
+| `MCP_DATA_DIR` | No | `/var/lib/actual-mcp` | SDK budget cache directory |
 | `CURRENCY_SYMBOL` | No | `$` | Currency symbol for formatting |
 | `LOG_LEVEL` | No | `info` | Log level: `debug`, `info`, `warn`, `error` |
 
 ## Architecture
 
 ```
-Claude/AI <--MCP--> actual-budget-mcp <--HTTP--> actual-http-api <---> Actual Budget
-                     (this project)              (proxy layer)         (your data)
+v2: Claude/AI <--MCP--> actual-budget-mcp <----> actual-server
+                         (this project)         (sync server)
 ```
 
-The MCP server never touches your budget database directly. All operations go through actual-http-api, which handles authentication and data access.
+The MCP server uses `@actual-app/api` in-process and persists its budget cache to a Docker volume at `/var/lib/actual-mcp`.
 
 ## MCP Client Setup
 
-### Claude Desktop
+### Claude Desktop (stdio)
 
 Add to your `claude_desktop_config.json`:
 
@@ -83,8 +88,8 @@ Add to your `claude_desktop_config.json`:
       "command": "node",
       "args": ["/path/to/actual-budget-mcp/build/src/index.js"],
       "env": {
-        "ACTUAL_HTTP_API_URL": "http://localhost:5007",
-        "ACTUAL_HTTP_API_KEY": "your-api-key",
+        "ACTUAL_SERVER_URL": "http://localhost:5006",
+        "ACTUAL_SERVER_PASSWORD": "your-actual-server-password",
         "ACTUAL_BUDGET_SYNC_ID": "your-sync-id"
       }
     }
@@ -92,106 +97,207 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-### Remote (SSE)
+### Remote (Streamable HTTP, recommended)
 
-For remote access, set `MCP_TRANSPORT=sse` and optionally `MCP_AUTH_TOKEN`:
+Set `MCP_TRANSPORT=http` and `MCP_API_KEYS` (comma-separated, each token ≥32 chars and ≥16 unique chars):
 
 ```json
 {
   "mcpServers": {
     "actual-budget": {
-      "url": "http://your-server:3001/sse",
+      "url": "http://your-server:3000/mcp",
       "headers": {
-        "Authorization": "Bearer your-auth-token"
+        "Authorization": "Bearer your-api-key-min-32-chars-and-16-unique"
       }
     }
   }
 }
 ```
 
+### Remote (SSE, deprecated)
+
+SSE transport is still supported through v2.1 for backwards compatibility but is slated for removal. The endpoint is `/sse` (POSTs to `/messages`). Responses include `Deprecation: true` and `Sunset` headers. Migrate to Streamable HTTP — see [`docs/MIGRATION-v1-to-v2.md`](docs/MIGRATION-v1-to-v2.md).
+
 ## Tools
 
-### CRUD Operations
+### Accounts
 
 | Tool | Description |
 |------|-------------|
-| `get-accounts` | List all accounts with balances |
-| `get-transactions` | Query transactions with date filters |
-| `create-transaction` | Create transaction (supports splits) |
-| `update-transaction` | Update transaction fields |
+| `get-accounts` | List all accounts |
+| `get-account-balance` | Get current balance for one account |
+| `create-account` | Create an on- or off-budget account |
+| `update-account` | Rename or rebalance an account |
+| `close-account` | Close an account (transferring balance) |
+| `reopen-account` | Reopen a closed account |
+| `delete-account` | Delete an account |
+
+### Transactions
+
+| Tool | Description |
+|------|-------------|
+| `get-transactions` | Query transactions with date / account filters |
+| `add-transactions` | Add transactions (no rules / categorization) |
+| `import-transactions` | Import transactions (with rules + dedupe) |
+| `update-transaction` | Update one transaction (supports splits) |
 | `delete-transaction` | Delete a transaction |
-| `get-categories` | List category groups and categories |
-| `manage-category` | Create/update/delete categories and groups |
+
+### Categories
+
+| Tool | Description |
+|------|-------------|
+| `get-categories` | List all categories |
+| `get-category-groups` | List category groups |
+| `create-category` | Create a category |
+| `update-category` | Update a category |
+| `delete-category` | Delete a category |
+| `create-category-group` | Create a category group |
+| `update-category-group` | Update a category group |
+| `delete-category-group` | Delete a category group |
+
+### Payees
+
+| Tool | Description |
+|------|-------------|
 | `get-payees` | List all payees |
-| `manage-payee` | Create/update/delete/merge payees |
-| `get-budget-month` | Get budget data for a month |
-| `set-budget-amount` | Set category budget amount |
-| `transfer-budget` | Move money between categories |
+| `get-common-payees` | List the most-used payees |
+| `create-payee` | Create a payee |
+| `update-payee` | Update a payee |
+| `delete-payee` | Delete a payee |
+| `merge-payees` | Merge one payee into another |
+| `get-payee-rules` | List rules associated with a payee |
+
+### Budget
+
+| Tool | Description |
+|------|-------------|
+| `get-budget-month` | Get budget data for a single month |
+| `get-budget-months` | List available budget months |
+| `set-budget-amount` | Set the budgeted amount for a category |
+| `set-budget-carryover` | Toggle carryover for a category |
+| `hold-budget-for-next-month` | Hold leftover funds for next month |
+| `reset-budget-hold` | Clear a hold-for-next-month flag |
+
+### Schedules
+
+| Tool | Description |
+|------|-------------|
 | `get-schedules` | List scheduled transactions |
-| `manage-schedule` | Create/update/delete schedules |
+| `create-schedule` | Create a schedule |
+| `update-schedule` | Update a schedule |
+| `delete-schedule` | Delete a schedule |
+
+### Rules
+
+| Tool | Description |
+|------|-------------|
 | `get-rules` | List transaction rules |
-| `manage-rule` | Create/update/delete rules |
+| `create-rule` | Create a rule |
+| `update-rule` | Update a rule |
+| `delete-rule` | Delete a rule |
+
+### Notes
+
+| Tool | Description |
+|------|-------------|
 | `get-notes` | Get notes for an entity |
 | `set-notes` | Set notes for an entity |
-| `run-bank-sync` | Trigger bank sync |
+| `delete-notes` | Delete notes for an entity |
 
-### Analytics
+### Tags (NEW in v2)
 
 | Tool | Description |
 |------|-------------|
-| `monthly-financial-summary` | Income, expenses, net, savings rate, top categories |
-| `spending-analysis` | Spending breakdown by category, payee, or account |
-| `budget-variance-report` | Budgeted vs actual with over/under flags |
-| `trend-analysis` | Month-over-month spending trends |
-| `net-worth-snapshot` | All account balances and total net worth |
-| `income-expense-timeline` | Monthly income/expense/net over time |
+| `get-tags` | List all transaction tags |
+| `create-tag` | Create a tag |
+| `update-tag` | Update a tag |
+| `delete-tag` | Delete a tag |
+
+### Utility
+
+| Tool | Description |
+|------|-------------|
+| `run-bank-sync` | Trigger bank sync |
+| `get-id-by-name` | Resolve an account / category / payee name to its ID |
+| `get-server-version` | Report the actual-server version |
 
 ### Query
 
 | Tool | Description |
 |------|-------------|
-| `run-query` | Execute raw ActualQL queries with full filter, aggregate, and join support |
+| `query` | Execute raw ActualQL queries with full filter, aggregate, and join support |
+
+## Resources
+
+| URI | Description |
+|-----|-------------|
+| `actual://accounts` | All accounts with type and current balance |
+| `actual://categories` | Full category tree (groups + categories) |
+| `actual://payees` | All payees |
+| `actual://budget-settings` | Currency / formatting settings |
+
+## Prompts
+
+| Name | Description |
+|------|-------------|
+| `financial-health-check` | Guided savings rate / spending / variance review with recommendations |
+| `budget-review` | Monthly budget review with overspent / underspent flags |
+| `spending-deep-dive` | Deep dive into a specific category over a time period |
+| `actualql-reference` | Full ActualQL syntax reference for the `query` tool |
 
 ## Development
 
 ```bash
-npm ci              # Install dependencies
-npm run dev         # Start with hot reload
-npm test            # Run tests (58 tests)
-npm run lint        # ESLint strict + TypeScript check
-npm run build       # Compile TypeScript
-npm run format      # Prettier formatting
+npm ci                      # Install dependencies
+npm run dev                 # Start with hot reload (tsx)
+npm test                    # Run unit tests (vitest)
+npm run test:integration    # Integration tests against committed budget fixture (real SDK)
+npm run test:e2e            # Docker-compose smoke suite (auth, tools, notes round-trip)
+npm run lint                # ESLint strict + TypeScript --noEmit
+npm run build               # Compile TypeScript to build/
+npm run format              # Prettier formatting
 ```
 
 ### Project Structure
 
 ```
 src/
-  index.ts          # Entry point, transport setup
-  config.ts         # Zod-validated environment config
-  client.ts         # Typed HTTP client with TTL cache and retry
-  auth.ts           # Bearer token middleware
-  format.ts         # Markdown formatting utilities
-  server.ts         # MCP server factory
-  resources.ts      # MCP resources (accounts, categories, etc.)
-  prompts.ts        # Guided analysis prompts
+  index.ts            # Entry point
+  app.ts              # Express app + MCP transport wiring (per-session map)
+  config.ts           # Zod-validated v2 env config (with v1 var detection)
+  auth.ts             # Multi-key Bearer middleware + Origin allowlist
+  audit.ts            # Audit logger (sha256 caller-key prefix)
+  health.ts           # /health endpoint
+  server.ts           # MCP server factory (registers tools/resources/prompts)
+  resources.ts        # MCP resources
+  prompts.ts          # MCP prompts
+  format.ts           # Markdown formatting helpers
+  client/
+    actual-client.ts  # ActualClient interface (boundary)
+    fake-client.ts    # In-memory fake for unit tests
+    sdk-client.ts     # Production @actual-app/api SDK adapter
+    sync-coalescer.ts # 2s debounce for sync calls
+    lifecycle.ts      # init/shutdown with p-retry + signal handlers
   tools/
-    shared.ts       # Shared types and helpers
-    crud.ts         # 19 CRUD tools
-    query.ts        # ActualQL query tool
-    analytics.ts    # 6 analytical report tools
-tests/              # Vitest tests with MSW mocking
-docker/             # Docker Compose files (dev + production)
+    register.ts       # Aggregator
+    shared.ts         # readTool / writeTool wrappers
+    {accounts,budget,categories,notes,payees,query,rules,schedules,tags,transactions,utility}.ts
+tests/
+  unit/               # Vitest + FakeActualClient
+  integration/        # Real SDK against committed budget fixture
+  e2e/                # docker-compose smoke suite
+docker/               # Production + dev compose
 ```
 
 ## Tech Stack
 
 - **Runtime:** Node.js 22, TypeScript (strict mode)
 - **MCP SDK:** `@modelcontextprotocol/sdk`
+- **SDK:** `@actual-app/api` v26 (in-process, not HTTP proxy)
 - **Validation:** Zod v4
-- **HTTP:** p-retry (exponential backoff), TTL cache
-- **Security:** helmet, express-rate-limit, constant-time auth
-- **Testing:** Vitest, MSW (Mock Service Worker)
+- **Resilience:** p-retry (exponential backoff), 2-second sync coalescer
+- **Security:** helmet, express-rate-limit, multi-key Bearer with constant-time compare, Origin allowlist, audit logger
+- **Testing:** Vitest (unit + integration + e2e), in-memory fake client, committed budget fixture
 - **Linting:** ESLint (strictTypeChecked), Prettier
 - **CI/CD:** GitHub Actions, release-please, Docker multi-arch builds
 - **Commits:** Conventional Commits (commitlint + husky)
