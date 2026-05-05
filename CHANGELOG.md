@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.8...v2.0.0) (2026-05-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* Replaces actual-http-api proxy with direct @actual-app/api SDK. Env vars renamed (ACTUAL_HTTP_API_URL -> ACTUAL_SERVER_URL, ACTUAL_HTTP_API_KEY -> ACTUAL_SERVER_PASSWORD, MCP_AUTH_TOKEN -> MCP_API_KEYS). Default MCP_PORT changed 3001 -> 3000. SSE transport deprecated; removal targeted v2.1. See docs/MIGRATION-v1-to-v2.md.
+
+### Features
+
+* v2 direct @actual-app/api SDK ([#13](https://github.com/KazeFreeze/actual-budget-mcp/issues/13)) ([de52acb](https://github.com/KazeFreeze/actual-budget-mcp/commit/de52acbb230a33216eff57046e5aabd82830dd61))
+
 ## 2.0.0 (unreleased)
 
 ### ⚠ BREAKING CHANGES
