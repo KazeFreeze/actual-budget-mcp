@@ -2,6 +2,24 @@
   "name": "actual-budget-mcp",
   "version": "3.0.1",
   "description": "MCP server for Actual Budget using the official @actual-app/api SDK",
+  "license": "MIT",
+  "author": "Bernard G. Tapiru, Jr.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KazeFreeze/actual-budget-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KazeFreeze/actual-budget-mcp/issues"
+  },
+  "homepage": "https://github.com/KazeFreeze/actual-budget-mcp#readme",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "actual-budget",
+    "personal-finance",
+    "claude",
+    "ai"
+  ],
   "type": "module",
   "main": "build/src/index.js",
   "bin": {
