@@ -8,11 +8,21 @@ export function registerAccountTools(server: McpServer, deps: McpServerDeps): vo
 
   server.registerTool(
     'get-accounts',
-    { description: 'List all accounts.', inputSchema: {} },
+    { description: 'List all accounts with current balance (in cents).', inputSchema: {} },
     adaptRead(
       readTool(coalescer, async () => {
         const accounts = await client.getAccounts();
-        return ok(JSON.stringify(accounts, null, 2));
+        const enriched = await Promise.all(
+          accounts.map(async (a) => {
+            try {
+              const balance_current = await client.getAccountBalance(a.id);
+              return { ...a, balance_current };
+            } catch {
+              return { ...a, balance_current: null };
+            }
+          }),
+        );
+        return ok(JSON.stringify(enriched, null, 2));
       }),
     ),
   );
