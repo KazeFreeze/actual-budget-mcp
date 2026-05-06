@@ -27,7 +27,6 @@ export function setup(register: (server: McpServer, deps: McpServerDeps) => void
     client,
     coalescer,
     logger,
-    currencySymbol: '$',
   });
   return { server, client };
 }

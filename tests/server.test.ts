@@ -28,7 +28,6 @@ describe('createMcpServer', () => {
       client,
       coalescer,
       logger,
-      currencySymbol: '$',
     });
     expect(server).toBeDefined();
   });

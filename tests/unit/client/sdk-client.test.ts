@@ -59,45 +59,4 @@ describe('SdkActualClient', () => {
       note: 'updated',
     });
   });
-
-  it('reads defaultCurrencyCode via lib.send(preferences/get)', async () => {
-    sendMock.mockClear();
-    sendMock.mockResolvedValueOnce({ defaultCurrencyCode: 'PHP' } as never);
-    const c = new SdkActualClient({
-      dataDir: '/tmp/x',
-      serverURL: 'http://x',
-      password: 'p',
-      syncId: 's',
-    });
-    await c.init();
-    const code = await c.getCurrencyCode();
-    expect(sendMock).toHaveBeenCalledWith('preferences/get', undefined);
-    expect(code).toBe('PHP');
-  });
-
-  it('returns null when defaultCurrencyCode is missing', async () => {
-    sendMock.mockClear();
-    sendMock.mockResolvedValueOnce({} as never);
-    const c = new SdkActualClient({
-      dataDir: '/tmp/x',
-      serverURL: 'http://x',
-      password: 'p',
-      syncId: 's',
-    });
-    await c.init();
-    expect(await c.getCurrencyCode()).toBeNull();
-  });
-
-  it('returns null (does not throw) when the SDK send call fails', async () => {
-    sendMock.mockClear();
-    sendMock.mockRejectedValueOnce(new Error('boom'));
-    const c = new SdkActualClient({
-      dataDir: '/tmp/x',
-      serverURL: 'http://x',
-      password: 'p',
-      syncId: 's',
-    });
-    await c.init();
-    expect(await c.getCurrencyCode()).toBeNull();
-  });
 });

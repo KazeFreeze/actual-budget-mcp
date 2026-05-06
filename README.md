@@ -10,7 +10,7 @@ Connects directly to your Actual Budget sync server using the official `@actual-
 - **Tags CRUD (NEW in v2)** -- full create/read/update/delete for transaction tags
 - **Notes (read/write/delete)** -- now functional, was broken in v1
 - **Raw query power** -- `query` tool with full ActualQL support (filters, aggregates, joins, grouping)
-- **4 MCP resources** -- accounts, categories, payees, budget settings
+- **3 MCP resources** -- accounts, categories, payees
 - **4 guided prompts** -- financial health check, budget review, spending deep dive, ActualQL reference
 - **Markdown output** -- formatted tables, split transaction rendering, 34-38% fewer tokens than JSON
 - **Multiple transports** -- stdio (local), Streamable HTTP (remote, recommended), SSE (deprecated, removal targeted v2.1)
@@ -63,7 +63,6 @@ npm run dev
 | `MCP_PORT` | No | `3000` | Port for http/sse transport |
 | `MCP_RATE_LIMIT_PER_MIN` | No | `120` | Per-IP rate limit (http/sse) |
 | `MCP_DATA_DIR` | No | `/var/lib/actual-mcp` | SDK budget cache directory |
-| `CURRENCY_SYMBOL` | No | _auto_ | Optional override. Auto-detected from the budget's `defaultCurrencyCode` preference; set this only to force a specific symbol. Falls back to `$` if neither is available. **Slated for removal in v3** — see [design note](docs/superpowers/specs/2026-05-06-v3-currency-redesign.md). |
 | `LOG_LEVEL` | No | `info` | Log level: `debug`, `info`, `warn`, `error` |
 
 ## Architecture
@@ -234,7 +233,8 @@ SSE transport is still supported through v2.1 for backwards compatibility but is
 | `actual://accounts` | All accounts with type and current balance |
 | `actual://categories` | Full category tree (groups + categories) |
 | `actual://payees` | All payees |
-| `actual://budget-settings` | Currency / formatting settings |
+
+> Amounts are returned as plain formatted numbers (e.g. `1,250.00`). Have your client supply the currency label in its system prompt — for example, add `Currency is PHP — display as ₱.` to your `CLAUDE.md`.
 
 ## Prompts
 

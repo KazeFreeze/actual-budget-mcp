@@ -4,7 +4,7 @@ import { loadConfig } from './config.js';
 import { SdkActualClient } from './client/sdk-client.js';
 import { SyncCoalescer } from './client/sync-coalescer.js';
 import { installSignalHandlers } from './client/lifecycle.js';
-import { createMcpServer, resolveCurrencySymbol } from './server.js';
+import { createMcpServer } from './server.js';
 import { createApp } from './app.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
@@ -29,8 +29,6 @@ async function main(): Promise<void> {
   await client.init();
   sdkReady = true;
 
-  const currencySymbol = await resolveCurrencySymbol(config, client, logger);
-
   const coalescer = new SyncCoalescer(client, 2000);
 
   installSignalHandlers(client, () => {
@@ -39,7 +37,7 @@ async function main(): Promise<void> {
   });
 
   if (config.mcpTransport === 'stdio') {
-    const server = createMcpServer({ config, client, coalescer, logger, currencySymbol });
+    const server = createMcpServer({ config, client, coalescer, logger });
     const transport = new StdioServerTransport();
     await server.connect(transport);
     logger.info('MCP server running on stdio');
@@ -53,7 +51,6 @@ async function main(): Promise<void> {
     sdkInitialized: () => sdkReady,
     logger,
     version: VERSION,
-    currencySymbol,
   });
 
   app.listen(config.mcpPort, () => {

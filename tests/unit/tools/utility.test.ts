@@ -91,7 +91,6 @@ describe('get-server-version', () => {
       client,
       coalescer,
       logger,
-      currencySymbol: '$',
     });
 
     await coalescer.maybeSync();

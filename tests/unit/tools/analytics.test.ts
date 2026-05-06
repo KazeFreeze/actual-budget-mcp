@@ -58,9 +58,9 @@ describe('monthly-financial-summary', () => {
     expect(r.isError).toBeFalsy();
     const text = r.content[0]?.text ?? '';
     expect(text).toContain('Monthly Financial Summary: 2026-05');
-    expect(text).toContain('**Income:** $5,000.00');
-    expect(text).toContain('**Expenses:** -$400.00');
-    expect(text).toContain('**Net:** $4,600.00');
+    expect(text).toContain('**Income:** 5,000.00');
+    expect(text).toContain('**Expenses:** -400.00');
+    expect(text).toContain('**Net:** 4,600.00');
     expect(text).toContain('**Savings Rate:** 92.0%');
     expect(text).toContain('Top Spending Categories');
     expect(text).toContain('Food');
@@ -72,8 +72,8 @@ describe('monthly-financial-summary', () => {
     const r = await call(server, 'monthly-financial-summary', { month: '2026-05' });
     expect(r.isError).toBeFalsy();
     const text = r.content[0]?.text ?? '';
-    expect(text).toContain('**Income:** $0.00');
-    expect(text).toContain('**Expenses:** $0.00');
+    expect(text).toContain('**Income:** 0.00');
+    expect(text).toContain('**Expenses:** 0.00');
     expect(text).toContain('**Savings Rate:** 0.0%');
   });
 
@@ -136,7 +136,7 @@ describe('spending-analysis', () => {
     expect(text).toContain('**Grouped by:** category');
     expect(text).toContain('Food');
     expect(text).toContain('Fuel');
-    expect(text).toContain('-$300.00'); // total
+    expect(text).toContain('-300.00'); // total
     expect(text).toContain('**Total**');
   });
 
@@ -222,7 +222,7 @@ describe('spending-analysis', () => {
     const text = r.content[0]?.text ?? '';
     expect(text).toContain('Spending');
     expect(text).not.toContain('| Food '); // child names should not appear as rows
-    expect(text).toContain('-$300.00');
+    expect(text).toContain('-300.00');
   });
 
   it('excludes positive (income) amounts and income-category transactions', async () => {
@@ -259,7 +259,7 @@ describe('spending-analysis', () => {
     const text = r.content[0]?.text ?? '';
     expect(text).toContain('Food');
     expect(text).not.toContain('Salary');
-    expect(text).toContain('-$100.00'); // total = only the food spend
+    expect(text).toContain('-100.00'); // total = only the food spend
   });
 });
 
@@ -427,10 +427,10 @@ describe('net-worth-snapshot', () => {
     expect(text).toContain('Checking');
     expect(text).toContain('Savings');
     expect(text).toContain('Brokerage');
-    expect(text).toContain('Total Net Worth: $8,000.00');
+    expect(text).toContain('Total Net Worth: 8,000.00');
     // Subtotals
-    expect(text).toMatch(/Subtotal.*\$3,000\.00/);
-    expect(text).toMatch(/Subtotal.*\$5,000\.00/);
+    expect(text).toMatch(/Subtotal.*3,000\.00/);
+    expect(text).toMatch(/Subtotal.*5,000\.00/);
   });
 
   it('excludes closed accounts', async () => {
@@ -444,7 +444,7 @@ describe('net-worth-snapshot', () => {
     const text = r.content[0]?.text ?? '';
     expect(text).toContain('Open');
     expect(text).not.toContain('Old');
-    expect(text).toContain('Total Net Worth: $1,000.00');
+    expect(text).toContain('Total Net Worth: 1,000.00');
   });
 
   it('returns zero total when there are no accounts', async () => {
@@ -454,7 +454,7 @@ describe('net-worth-snapshot', () => {
     const text = r.content[0]?.text ?? '';
     expect(text).not.toContain('On-Budget Accounts');
     expect(text).not.toContain('Off-Budget Accounts');
-    expect(text).toContain('Total Net Worth: $0.00');
+    expect(text).toContain('Total Net Worth: 0.00');
   });
 });
 
@@ -588,9 +588,9 @@ describe('income-expense-timeline', () => {
     expect(text).toContain('2026-04');
     expect(text).toContain('2026-05');
     // April: net = 1000 - 250 = 750.00
-    expect(text).toContain('$750.00');
+    expect(text).toContain('750.00');
     // Cumulative through May: 750 + (1000-500) = 1250.00
-    expect(text).toContain('$1,250.00');
+    expect(text).toContain('1,250.00');
   });
 
   it('returns an error when end_month precedes start_month', async () => {

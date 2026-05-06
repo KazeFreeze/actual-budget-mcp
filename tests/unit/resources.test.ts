@@ -11,14 +11,14 @@ interface ResourceEntry {
   }>;
 }
 
-function setupForResources(currencySymbol = '$'): {
+function setupForResources(): {
   server: McpServer;
   client: FakeActualClient;
   resources: Record<string, ResourceEntry>;
 } {
   const client = new FakeActualClient();
   const server = new McpServer({ name: 't', version: '0' }, { capabilities: { resources: {} } });
-  setupResources(server, client, currencySymbol);
+  setupResources(server, client);
   const resources = (server as unknown as { _registeredResources: Record<string, ResourceEntry> })
     ._registeredResources;
   return { server, client, resources };
@@ -32,11 +32,10 @@ async function readUri(resources: Record<string, ResourceEntry>, uri: string): P
 }
 
 describe('resources', () => {
-  it('registers all four resources at expected URIs', () => {
+  it('registers all three resources at expected URIs', () => {
     const { resources } = setupForResources();
     expect(Object.keys(resources).sort()).toEqual([
       'actual://accounts',
-      'actual://budget-settings',
       'actual://categories',
       'actual://payees',
     ]);
@@ -50,7 +49,7 @@ describe('resources', () => {
   });
 
   it('actual://accounts renders a markdown table including the seeded account name and balance', async () => {
-    const { client, resources } = setupForResources('$');
+    const { client, resources } = setupForResources();
     client.seedAccount({ id: 'a1', name: 'Checking', offbudget: false, closed: false });
     // Override balance so we can assert the formatted value appears.
     client.getAccountBalance = (_id: string): Promise<number> => Promise.resolve(12345);
@@ -60,11 +59,11 @@ describe('resources', () => {
     expect(text).toContain('Checking');
     expect(text).toContain('On Budget');
     expect(text).toContain('Open');
-    expect(text).toContain('$123.45');
+    expect(text).toContain('123.45');
   });
 
   it('actual://accounts marks closed and offbudget accounts correctly', async () => {
-    const { client, resources } = setupForResources('$');
+    const { client, resources } = setupForResources();
     client.seedAccount({ id: 'a1', name: 'OldSavings', offbudget: true, closed: true });
     client.getAccountBalance = (_id: string): Promise<number> => Promise.resolve(0);
 
@@ -125,19 +124,13 @@ describe('resources', () => {
     expect(text).not.toContain('Transfer to Savings');
   });
 
-  it('actual://budget-settings returns the configured currency symbol', async () => {
-    const { resources } = setupForResources('€');
-    const text = await readUri(resources, 'actual://budget-settings');
-    expect(text).toBe('# Budget Settings\n\n- **Currency Symbol:** €');
-  });
-
   it('readCallback returns ReadResourceResult with uri and mimeType set', async () => {
-    const { resources } = setupForResources('$');
-    const entry = resources['actual://budget-settings'];
-    if (!entry) throw new Error('budget-settings resource not registered');
-    const result = await entry.readCallback(new URL('actual://budget-settings'));
+    const { resources } = setupForResources();
+    const entry = resources['actual://accounts'];
+    if (!entry) throw new Error('accounts resource not registered');
+    const result = await entry.readCallback(new URL('actual://accounts'));
     expect(result.contents).toHaveLength(1);
-    expect(result.contents[0]?.uri).toBe('actual://budget-settings');
+    expect(result.contents[0]?.uri).toBe('actual://accounts');
     expect(result.contents[0]?.mimeType).toBe('text/markdown');
   });
 });

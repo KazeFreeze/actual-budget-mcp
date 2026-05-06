@@ -1,9 +1,9 @@
-export function formatAmount(amountInCents: number, currencySymbol: string): string {
+export function formatAmount(amountInCents: number): string {
   const isNegative = amountInCents < 0;
   const abs = Math.abs(amountInCents);
   const dollars = Math.floor(abs / 100);
   const cents = abs % 100;
-  const formatted = `${currencySymbol}${dollars.toLocaleString('en-US')}.${cents.toString().padStart(2, '0')}`;
+  const formatted = `${dollars.toLocaleString('en-US')}.${cents.toString().padStart(2, '0')}`;
   return isNegative ? `-${formatted}` : formatted;
 }
 
@@ -48,10 +48,7 @@ interface TransactionRow {
   subtransactions: Array<{ payee: string; category: string; amount: number; notes: string }>;
 }
 
-export function formatTransactionTable(
-  transactions: TransactionRow[],
-  currencySymbol: string,
-): string {
+export function formatTransactionTable(transactions: TransactionRow[]): string {
   const headers = ['Date', 'Payee', 'Category', 'Amount', 'Notes'];
   const rows: string[][] = [];
 
@@ -60,7 +57,7 @@ export function formatTransactionTable(
       tx.date,
       tx.payee,
       tx.subtransactions.length > 0 ? '' : tx.category,
-      formatAmount(tx.amount, currencySymbol),
+      formatAmount(tx.amount),
       tx.notes || '',
     ]);
 
@@ -71,7 +68,7 @@ export function formatTransactionTable(
         '',
         `${prefix} ${sub.payee}`,
         sub.category,
-        formatAmount(sub.amount, currencySymbol),
+        formatAmount(sub.amount),
         sub.notes || '',
       ]);
     });

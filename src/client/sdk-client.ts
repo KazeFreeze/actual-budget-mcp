@@ -262,26 +262,6 @@ export class SdkActualClient implements ActualClient {
     await api.deleteTag(id);
   }
 
-  // ---- preferences
-  async getCurrencyCode(): Promise<string | null> {
-    // The SDK has no top-level `getPreferences` export; the synced
-    // preferences live behind the internal `preferences/get` handler. We
-    // route via the same `lib.send` bridge we already use for `notes-save`
-    // (see `internalSend` for the full rationale — module-level
-    // `api.internal` is unreliable across module-resolution contexts).
-    try {
-      const prefs = (await this.internalSend('preferences/get', undefined)) as
-        | { defaultCurrencyCode?: unknown }
-        | null
-        | undefined;
-      const code = prefs?.defaultCurrencyCode;
-      if (typeof code === 'string' && code.length > 0) return code;
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
   // Bridge to the SDK's internal `send` — the only way to persist notes
   // until the SDK exposes a top-level `setNote`. Uses `this.lib` (captured
   // from init()'s return value) instead of the module-level `api.internal`
