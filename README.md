@@ -304,4 +304,4 @@ docker/               # Production + dev compose
 
 ## License
 
-MIT
+[MIT](LICENSE) © Bernard G. Tapiru, Jr.
