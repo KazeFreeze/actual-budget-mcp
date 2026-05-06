@@ -1,6 +1,6 @@
 {
   "name": "actual-budget-mcp",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "MCP server for Actual Budget using the official @actual-app/api SDK",
   "type": "module",
   "main": "build/src/index.js",

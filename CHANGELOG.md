@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/KazeFreeze/actual-budget-mcp/compare/v2.0.0...v2.1.0) (2026-05-06)
+
+
+### Features
+
+* auto-detect currency symbol from budget preferences ([#15](https://github.com/KazeFreeze/actual-budget-mcp/issues/15)) ([a606733](https://github.com/KazeFreeze/actual-budget-mcp/commit/a60673370eadf3ef64e6a81d48b1a82d6c52612a))
+
 ## 2.0.1 (unreleased)
 
 ### Features
