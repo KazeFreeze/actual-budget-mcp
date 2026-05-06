@@ -52,8 +52,7 @@ function isSplitParent(tx: Transaction): boolean {
 }
 
 export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): void {
-  const { client, coalescer, config } = deps;
-  const currencySymbol = config.currencySymbol;
+  const { client, coalescer, currencySymbol } = deps;
 
   // 1. monthly-financial-summary
   server.registerTool(

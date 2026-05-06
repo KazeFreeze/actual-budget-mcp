@@ -20,6 +20,7 @@ One fewer container to run. The MCP server now opens the budget file in-process 
 | `MCP_AUTH_TOKEN`        | `MCP_API_KEYS`                       | Comma-separated list now. **Each token must be ≥32 chars and contain ≥16 unique chars.**                         |
 | _(none)_                | `MCP_ALLOWED_ORIGINS`                | Comma-separated allowed `Origin` headers. Recommended in production for browser-based clients.                   |
 | _(none)_                | `ACTUAL_BUDGET_ENCRYPTION_PASSWORD`  | Required only if your budget is E2EE-encrypted.                                                                  |
+| `CURRENCY_SYMBOL`       | `CURRENCY_SYMBOL` (optional override) | Now auto-detected from the budget's `defaultCurrencyCode` preference (since v2.0.1). Set only to force a symbol. |
 
 `ACTUAL_BUDGET_SYNC_ID` is unchanged.
 

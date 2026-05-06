@@ -15,7 +15,6 @@ const cfg: Config = {
   mcpPort: 3000,
   mcpRateLimitPerMin: 120,
   mcpDataDir: '/tmp',
-  currencySymbol: '$',
   logLevel: 'info',
 };
 
@@ -24,7 +23,13 @@ describe('createMcpServer', () => {
     const client = new FakeActualClient();
     const coalescer = new SyncCoalescer(client, 2000);
     const logger = pino({ level: 'silent' });
-    const server = createMcpServer({ config: cfg, client, coalescer, logger });
+    const server = createMcpServer({
+      config: cfg,
+      client,
+      coalescer,
+      logger,
+      currencySymbol: '$',
+    });
     expect(server).toBeDefined();
   });
 });

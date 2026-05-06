@@ -28,6 +28,7 @@ export class FakeActualClient implements ActualClient {
   private readonly rules = new Map<string, Rule>();
   private readonly schedules = new Map<string, Schedule>();
   private readonly budgetMonths = new Map<string, BudgetMonth>();
+  private currencyCode: string | null = null;
 
   failNextSyncWith(err: Error): void {
     this.nextSyncError = err;
@@ -389,6 +390,11 @@ export class FakeActualClient implements ActualClient {
     return Promise.resolve();
   }
 
+  // preferences
+  getCurrencyCode(): Promise<string | null> {
+    return Promise.resolve(this.currencyCode);
+  }
+
   // helpers for tests
   seedAccount(a: Account): void {
     this.accounts.set(a.id, a);
@@ -412,5 +418,9 @@ export class FakeActualClient implements ActualClient {
 
   seedBudgetMonth(m: BudgetMonth): void {
     this.budgetMonths.set(m.month, m);
+  }
+
+  seedCurrencyCode(code: string | null): void {
+    this.currencyCode = code;
   }
 }

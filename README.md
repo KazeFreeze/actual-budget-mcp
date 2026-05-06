@@ -63,7 +63,7 @@ npm run dev
 | `MCP_PORT` | No | `3000` | Port for http/sse transport |
 | `MCP_RATE_LIMIT_PER_MIN` | No | `120` | Per-IP rate limit (http/sse) |
 | `MCP_DATA_DIR` | No | `/var/lib/actual-mcp` | SDK budget cache directory |
-| `CURRENCY_SYMBOL` | No | `$` | Currency symbol for formatting |
+| `CURRENCY_SYMBOL` | No | _auto_ | Optional override. Auto-detected from the budget's `defaultCurrencyCode` preference; set this only to force a specific symbol. Falls back to `$` if neither is available. |
 | `LOG_LEVEL` | No | `info` | Log level: `debug`, `info`, `warn`, `error` |
 
 ## Architecture

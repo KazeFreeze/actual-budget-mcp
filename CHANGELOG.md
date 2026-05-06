@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1 (unreleased)
+
+### Features
+
+- **currency**: auto-detect symbol from budget's defaultCurrencyCode preference; CURRENCY_SYMBOL env var becomes optional override
+
 ## [2.0.0](https://github.com/KazeFreeze/actual-budget-mcp/compare/v1.0.8...v2.0.0) (2026-05-05)
 
 

@@ -45,7 +45,10 @@ const ConfigSchema = z
     mcpPort: z.coerce.number().int().positive().default(3000),
     mcpRateLimitPerMin: z.coerce.number().int().positive().default(120),
     mcpDataDir: z.string().default('/var/lib/actual-mcp'),
-    currencySymbol: z.string().default('$'),
+    // Optional override. When unset (the common case) the resolved symbol is
+    // auto-detected from the budget's `defaultCurrencyCode` synced
+    // preference at startup; see `resolveCurrencySymbol` in `server.ts`.
+    currencySymbol: z.string().optional(),
     logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   })
   .refine((c) => c.mcpTransport === 'stdio' || c.mcpApiKeys.length > 0, {
