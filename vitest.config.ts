@@ -4,6 +4,15 @@ export default defineConfig({
   test: {
     globals: true,
     root: '.',
-    exclude: ['build/**', 'node_modules/**', 'tests/integration/**', 'tests/e2e/**'],
+    include: ['tests/**/*.test.ts'],
+    exclude: [
+      'build/**',
+      'node_modules/**',
+      'tests/integration/**',
+      'tests/e2e/**',
+      '.worktrees/**',
+      '.claude/**',
+      'references/**',
+    ],
   },
 });
