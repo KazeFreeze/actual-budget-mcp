@@ -35,6 +35,9 @@ services:
       - MCP_TRANSPORT=http
       - MCP_PORT=3000
       - LOG_LEVEL=info
+      # Optional override; auto-detected from the budget's defaultCurrencyCode
+      # preference when unset. Uncomment to force a specific symbol.
+      # - CURRENCY_SYMBOL=$$
     depends_on:
       - actual-budget
     volumes:

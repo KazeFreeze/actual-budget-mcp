@@ -14,12 +14,13 @@ export interface AppDeps {
   sdkInitialized: () => boolean;
   logger: pino.Logger;
   version: string;
+  currencySymbol: string;
 }
 
 export async function createApp(
   deps: AppDeps,
 ): Promise<{ app: Express; cleanup: () => Promise<void> }> {
-  const { config, client, coalescer, sdkInitialized, logger, version } = deps;
+  const { config, client, coalescer, sdkInitialized, logger, version, currencySymbol } = deps;
   const express = (await import('express')).default;
   const helmet = (await import('helmet')).default;
   const { rateLimit } = await import('express-rate-limit');
@@ -81,7 +82,7 @@ export async function createApp(
 
     app.get('/sse', async (_req, res) => {
       setSunsetHeaders(res);
-      const sessionServer = createMcpServer({ config, client, coalescer, logger });
+      const sessionServer = createMcpServer({ config, client, coalescer, logger, currencySymbol });
       const transport = new SSEServerTransport('/messages', res);
       transports.set(transport.sessionId, transport);
       const ping = setInterval(() => {
@@ -144,7 +145,13 @@ export async function createApp(
         // transport will assign a session id during handleRequest and emit
         // it via the `onsessioninitialized` callback so we can route
         // subsequent requests for this session.
-        const sessionServer = createMcpServer({ config, client, coalescer, logger });
+        const sessionServer = createMcpServer({
+          config,
+          client,
+          coalescer,
+          logger,
+          currencySymbol,
+        });
         const sessionTransport: Transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           onsessioninitialized: (sid: string) => {

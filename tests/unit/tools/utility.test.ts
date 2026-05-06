@@ -86,7 +86,13 @@ describe('get-server-version', () => {
     const coalescer = new SyncCoalescer(client, 2000);
     const logger = pino({ level: 'silent' });
     const server = new McpServer({ name: 't', version: '0' }, { capabilities: { tools: {} } });
-    registerUtilityTools(server, { config: {} as Config, client, coalescer, logger });
+    registerUtilityTools(server, {
+      config: {} as Config,
+      client,
+      coalescer,
+      logger,
+      currencySymbol: '$',
+    });
 
     await coalescer.maybeSync();
     const syncCountBefore = client.syncCount;
