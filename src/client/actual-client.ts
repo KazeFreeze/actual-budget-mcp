@@ -4,6 +4,7 @@ export interface Account {
   type?: string;
   offbudget?: boolean;
   closed?: boolean;
+  balance_current?: number | null;
 }
 
 export interface Category {

@@ -78,6 +78,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['build/**', 'node_modules/**', 'eslint.config.js', 'vitest.config.ts', 'vitest.integration.config.ts', 'vitest.e2e.config.ts', 'commitlint.config.js'],
+    ignores: ['build/**', 'node_modules/**', 'eslint.config.js', 'vitest.config.ts', 'vitest.integration.config.ts', 'vitest.e2e.config.ts', 'commitlint.config.js', 'references/**', '.worktrees/**', '.claude/**'],
   },
 );

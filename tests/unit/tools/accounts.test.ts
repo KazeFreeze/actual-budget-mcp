@@ -11,6 +11,33 @@ describe('account tools', () => {
     expect(r.content[0]?.text).toContain('Checking');
   });
 
+  it('get-accounts populates balance_current from getAccountBalance', async () => {
+    const { server, client } = setup(registerAccountTools);
+    client.seedAccount({ id: 'a1', name: 'Checking', balance_current: null });
+    client.seedTransaction({
+      id: 't1',
+      account: 'a1',
+      date: '2026-01-01',
+      amount: 12500,
+      payee: '',
+      category: '',
+      notes: '',
+    });
+    client.seedTransaction({
+      id: 't2',
+      account: 'a1',
+      date: '2026-01-02',
+      amount: -2500,
+      payee: '',
+      category: '',
+      notes: '',
+    });
+    const r = await call(server, 'get-accounts', {});
+    expect(r.isError).toBeFalsy();
+    const parsed = JSON.parse(r.content[0]?.text ?? '[]') as Array<{ balance_current: unknown }>;
+    expect(parsed[0]?.balance_current).toBe(10000);
+  });
+
   it('create-account creates an account', async () => {
     const { server, client } = setup(registerAccountTools);
     const r = await call(server, 'create-account', { name: 'Savings', type: 'savings' });
