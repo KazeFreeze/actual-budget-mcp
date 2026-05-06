@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ActualClient } from './client/actual-client.js';
 import { formatAmount, formatMarkdownTable } from './format.js';
 
-async function readAccounts(client: ActualClient, currencySymbol: string): Promise<string> {
+async function readAccounts(client: ActualClient): Promise<string> {
   const accounts = await client.getAccounts();
   const rows: string[][] = [];
 
@@ -10,7 +10,7 @@ async function readAccounts(client: ActualClient, currencySymbol: string): Promi
     let balance: string;
     try {
       const value = await client.getAccountBalance(account.id);
-      balance = formatAmount(value, currencySymbol);
+      balance = formatAmount(value);
     } catch {
       balance = 'N/A';
     }
@@ -58,15 +58,7 @@ async function readPayees(client: ActualClient): Promise<string> {
   return `# Payees\n\n${table}`;
 }
 
-function readBudgetSettings(currencySymbol: string): string {
-  return `# Budget Settings\n\n- **Currency Symbol:** ${currencySymbol}`;
-}
-
-export function setupResources(
-  server: McpServer,
-  client: ActualClient,
-  currencySymbol: string,
-): void {
+export function setupResources(server: McpServer, client: ActualClient): void {
   server.registerResource(
     'accounts',
     'actual://accounts',
@@ -80,7 +72,7 @@ export function setupResources(
         {
           uri: uri.toString(),
           mimeType: 'text/markdown',
-          text: await readAccounts(client, currencySymbol),
+          text: await readAccounts(client),
         },
       ],
     }),
@@ -119,25 +111,6 @@ export function setupResources(
           uri: uri.toString(),
           mimeType: 'text/markdown',
           text: await readPayees(client),
-        },
-      ],
-    }),
-  );
-
-  server.registerResource(
-    'budget-settings',
-    'actual://budget-settings',
-    {
-      title: 'Budget Settings',
-      description: 'Budget configuration including currency format.',
-      mimeType: 'text/markdown',
-    },
-    (uri) => ({
-      contents: [
-        {
-          uri: uri.toString(),
-          mimeType: 'text/markdown',
-          text: readBudgetSettings(currencySymbol),
         },
       ],
     }),

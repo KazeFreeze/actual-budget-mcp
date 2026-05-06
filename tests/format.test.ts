@@ -1,24 +1,24 @@
 import { describe, it, expect } from 'vitest';
 
 describe('formatAmount', () => {
-  it('should format positive cents to currency string', async () => {
+  it('should format positive cents to a plain formatted number', async () => {
     const { formatAmount } = await import('../src/format.js');
-    expect(formatAmount(520000, '$')).toBe('$5,200.00');
+    expect(formatAmount(520000)).toBe('5,200.00');
   });
 
-  it('should format negative amounts with minus before symbol', async () => {
+  it('should format negative amounts with a leading minus', async () => {
     const { formatAmount } = await import('../src/format.js');
-    expect(formatAmount(-15678, '£')).toBe('-£156.78');
+    expect(formatAmount(-15678)).toBe('-156.78');
   });
 
   it('should format zero', async () => {
     const { formatAmount } = await import('../src/format.js');
-    expect(formatAmount(0, '$')).toBe('$0.00');
+    expect(formatAmount(0)).toBe('0.00');
   });
 
   it('should handle small amounts under a dollar', async () => {
     const { formatAmount } = await import('../src/format.js');
-    expect(formatAmount(5, '$')).toBe('$0.05');
+    expect(formatAmount(5)).toBe('0.05');
   });
 });
 
@@ -28,8 +28,8 @@ describe('formatMarkdownTable', () => {
     const result = formatMarkdownTable(
       ['Name', 'Amount'],
       [
-        ['Groceries', '-$500.00'],
-        ['Rent', '-$1,500.00'],
+        ['Groceries', '-500.00'],
+        ['Rent', '-1,500.00'],
       ],
     );
     expect(result).toContain('| Name');
@@ -48,48 +48,42 @@ describe('formatMarkdownTable', () => {
 describe('formatTransactionTable', () => {
   it('should render simple transactions in a table', async () => {
     const { formatTransactionTable } = await import('../src/format.js');
-    const result = formatTransactionTable(
-      [
-        {
-          date: '2026-03-14',
-          payee: 'Spotify',
-          category: 'Subscriptions',
-          amount: -1599,
-          notes: '',
-          subtransactions: [],
-        },
-      ],
-      '$',
-    );
+    const result = formatTransactionTable([
+      {
+        date: '2026-03-14',
+        payee: 'Spotify',
+        category: 'Subscriptions',
+        amount: -1599,
+        notes: '',
+        subtransactions: [],
+      },
+    ]);
     expect(result).toContain('Spotify');
     expect(result).toContain('Subscriptions');
-    expect(result).toContain('-$15.99');
+    expect(result).toContain('-15.99');
   });
 
   it('should render split transactions with tree characters', async () => {
     const { formatTransactionTable } = await import('../src/format.js');
-    const result = formatTransactionTable(
-      [
-        {
-          date: '2026-03-15',
-          payee: 'Costco',
-          category: '',
-          amount: -15678,
-          notes: 'Weekly',
-          subtransactions: [
-            { payee: 'Costco', category: 'Groceries', amount: -12000, notes: '' },
-            { payee: 'Gift Shop', category: 'Gifts', amount: -3678, notes: 'Birthday' },
-          ],
-        },
-      ],
-      '£',
-    );
+    const result = formatTransactionTable([
+      {
+        date: '2026-03-15',
+        payee: 'Costco',
+        category: '',
+        amount: -15678,
+        notes: 'Weekly',
+        subtransactions: [
+          { payee: 'Costco', category: 'Groceries', amount: -12000, notes: '' },
+          { payee: 'Gift Shop', category: 'Gifts', amount: -3678, notes: 'Birthday' },
+        ],
+      },
+    ]);
     expect(result).toContain('├─');
     expect(result).toContain('└─');
     expect(result).toContain('Groceries');
     expect(result).toContain('Gifts');
-    expect(result).toContain('-£120.00');
-    expect(result).toContain('-£36.78');
+    expect(result).toContain('-120.00');
+    expect(result).toContain('-36.78');
   });
 });
 

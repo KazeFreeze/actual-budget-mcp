@@ -226,13 +226,4 @@ export interface ActualClient {
   createTag(tag: Omit<Tag, 'id'>): Promise<string>;
   updateTag(id: string, fields: Partial<Omit<Tag, 'id'>>): Promise<void>;
   deleteTag(id: string): Promise<void>;
-
-  // preferences
-  /**
-   * Read the budget's `defaultCurrencyCode` synced preference (ISO 4217,
-   * e.g. "USD", "PHP", "EUR"). Returns `null` if the preference is missing,
-   * empty, or the underlying SDK call fails — callers should fall back to a
-   * default symbol rather than treat this as a hard error.
-   */
-  getCurrencyCode(): Promise<string | null>;
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.0 (unreleased)
+
+### ⚠ BREAKING CHANGES
+
+* Currency symbol is no longer emitted by the MCP server. Amounts are returned as plain formatted numbers (e.g. `1,250.00`). The `CURRENCY_SYMBOL` env var, the `currencySymbol` config field, and the `getCurrencyCode()` SDK call have all been removed. Currency labeling is now the client's responsibility — add `Currency is <CODE> — display as <SYMBOL>.` to your `CLAUDE.md`/system prompt. See `docs/MIGRATION-v2-to-v3.md` for details.
+
 ## [2.1.0](https://github.com/KazeFreeze/actual-budget-mcp/compare/v2.0.0...v2.1.0) (2026-05-06)
 
 

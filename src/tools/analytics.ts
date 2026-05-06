@@ -52,7 +52,7 @@ function isSplitParent(tx: Transaction): boolean {
 }
 
 export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): void {
-  const { client, coalescer, currencySymbol } = deps;
+  const { client, coalescer } = deps;
 
   // 1. monthly-financial-summary
   server.registerTool(
@@ -116,9 +116,9 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
           `## Monthly Financial Summary: ${m}`,
           '',
           '### Overview',
-          `- **Income:** ${formatAmount(totalIncome, currencySymbol)}`,
-          `- **Expenses:** ${formatAmount(totalExpenses, currencySymbol)}`,
-          `- **Net:** ${formatAmount(net, currencySymbol)}`,
+          `- **Income:** ${formatAmount(totalIncome)}`,
+          `- **Expenses:** ${formatAmount(totalExpenses)}`,
+          `- **Net:** ${formatAmount(net)}`,
           `- **Savings Rate:** ${savingsRate}%`,
         ];
 
@@ -128,11 +128,7 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
           const rows = topSpending.map(([catId, amount]) => {
             const pct =
               absExpenses > 0 ? ((Math.abs(amount) / absExpenses) * 100).toFixed(1) : '0.0';
-            return [
-              resolveName(catId, categoryMap),
-              formatAmount(amount, currencySymbol),
-              `${pct}%`,
-            ];
+            return [resolveName(catId, categoryMap), formatAmount(amount), `${pct}%`];
           });
           lines.push(formatMarkdownTable(headers, rows, ['left', 'right', 'right']));
         }
@@ -251,10 +247,10 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
 
           const rows: string[][] = sorted.map(([name, amount]) => {
             const pct = absTotal > 0 ? ((Math.abs(amount) / absTotal) * 100).toFixed(1) : '0.0';
-            const row = [name, formatAmount(amount, currencySymbol), `${pct}%`];
+            const row = [name, formatAmount(amount), `${pct}%`];
             if (compareSpending) {
               const prior = compareSpending.get(name) ?? 0;
-              row.push(formatAmount(prior, currencySymbol));
+              row.push(formatAmount(prior));
               const change =
                 prior !== 0 ? `${(((amount - prior) / Math.abs(prior)) * 100).toFixed(1)}%` : 'N/A';
               row.push(change);
@@ -262,10 +258,10 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
             return row;
           });
 
-          const totalRow = ['**Total**', formatAmount(totalSpent, currencySymbol), '100.0%'];
+          const totalRow = ['**Total**', formatAmount(totalSpent), '100.0%'];
           if (compareSpending) {
             const priorTotal = [...compareSpending.values()].reduce((a, b) => a + b, 0);
-            totalRow.push(formatAmount(priorTotal, currencySymbol));
+            totalRow.push(formatAmount(priorTotal));
             totalRow.push(
               priorTotal !== 0
                 ? `${(((totalSpent - priorTotal) / Math.abs(priorTotal)) * 100).toFixed(1)}%`
@@ -318,9 +314,9 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
 
             rows.push([
               cat.name,
-              formatAmount(budgeted, currencySymbol),
-              formatAmount(spent, currencySymbol),
-              formatAmount(variance, currencySymbol),
+              formatAmount(budgeted),
+              formatAmount(spent),
+              formatAmount(variance),
               status,
             ]);
           }
@@ -329,9 +325,9 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
         const totalVariance = totalBudgeted + totalSpent;
         rows.push([
           '**Total**',
-          formatAmount(totalBudgeted, currencySymbol),
-          formatAmount(totalSpent, currencySymbol),
-          formatAmount(totalVariance, currencySymbol),
+          formatAmount(totalBudgeted),
+          formatAmount(totalSpent),
+          formatAmount(totalVariance),
           totalVariance < 0 ? '\u26a0 Over' : '\u2713',
         ]);
 
@@ -378,9 +374,9 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
         if (onBudget.length > 0) {
           lines.push('### On-Budget Accounts');
           const headers = ['Account', 'Balance'];
-          const rows = onBudget.map((a) => [a.name, formatAmount(a.balance, currencySymbol)]);
+          const rows = onBudget.map((a) => [a.name, formatAmount(a.balance)]);
           const subtotal = onBudget.reduce((s, a) => s + a.balance, 0);
-          rows.push(['**Subtotal**', formatAmount(subtotal, currencySymbol)]);
+          rows.push(['**Subtotal**', formatAmount(subtotal)]);
           lines.push(formatMarkdownTable(headers, rows, ['left', 'right']));
           lines.push('');
         }
@@ -388,14 +384,14 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
         if (offBudget.length > 0) {
           lines.push('### Off-Budget Accounts');
           const headers = ['Account', 'Balance'];
-          const rows = offBudget.map((a) => [a.name, formatAmount(a.balance, currencySymbol)]);
+          const rows = offBudget.map((a) => [a.name, formatAmount(a.balance)]);
           const subtotal = offBudget.reduce((s, a) => s + a.balance, 0);
-          rows.push(['**Subtotal**', formatAmount(subtotal, currencySymbol)]);
+          rows.push(['**Subtotal**', formatAmount(subtotal)]);
           lines.push(formatMarkdownTable(headers, rows, ['left', 'right']));
           lines.push('');
         }
 
-        lines.push(`### Total Net Worth: ${formatAmount(totalNetWorth, currencySymbol)}`);
+        lines.push(`### Total Net Worth: ${formatAmount(totalNetWorth)}`);
         return ok(lines.join('\n'));
       }),
     ),
@@ -502,12 +498,7 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
                 }
               }
 
-              rows.push([
-                month,
-                formatAmount(spent, currencySymbol),
-                formatAmount(rollingAvg, currencySymbol),
-                anomaly,
-              ]);
+              rows.push([month, formatAmount(spent), formatAmount(rollingAvg), anomaly]);
             }
 
             lines.push(formatMarkdownTable(headers, rows, ['left', 'right', 'right', 'left']));
@@ -589,10 +580,10 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
 
             rows.push([
               month,
-              formatAmount(income, currencySymbol),
-              formatAmount(expenses, currencySymbol),
-              formatAmount(net, currencySymbol),
-              formatAmount(cumulative, currencySymbol),
+              formatAmount(income),
+              formatAmount(expenses),
+              formatAmount(net),
+              formatAmount(cumulative),
               `${savingsRate}%`,
             ]);
           }

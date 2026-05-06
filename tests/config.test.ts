@@ -71,16 +71,4 @@ describe('loadConfig', () => {
     Object.assign(process.env, REQUIRED_OK, { ACTUAL_SERVER_URL: 'not-a-url' });
     expect(() => loadConfig()).toThrow(/Invalid URL|actualServerUrl/i);
   });
-
-  it('leaves currencySymbol undefined when CURRENCY_SYMBOL is not set', () => {
-    Object.assign(process.env, REQUIRED_OK);
-    const cfg = loadConfig();
-    expect(cfg.currencySymbol).toBeUndefined();
-  });
-
-  it('passes through CURRENCY_SYMBOL when set explicitly', () => {
-    Object.assign(process.env, REQUIRED_OK, { CURRENCY_SYMBOL: '£' });
-    const cfg = loadConfig();
-    expect(cfg.currencySymbol).toBe('£');
-  });
 });
