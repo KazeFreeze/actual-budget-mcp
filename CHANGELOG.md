@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/KazeFreeze/actual-budget-mcp/compare/v2.1.0...v3.0.0) (2026-05-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* CURRENCY_SYMBOL env var removed; formatAmount signature changed; getCurrencyCode() removed from ActualClient interface.
+
+### Features
+
+* drop currency symbol from MCP layer ([#18](https://github.com/KazeFreeze/actual-budget-mcp/issues/18)) ([dac3fdc](https://github.com/KazeFreeze/actual-budget-mcp/commit/dac3fdc46c8036f386ac86c25bd17c5cadb6f5ce))
+
 ## 3.0.0 (unreleased)
 
 ### ⚠ BREAKING CHANGES
