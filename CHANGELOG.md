@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.0.0...v3.0.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* populate balance_current in get-accounts ([#20](https://github.com/KazeFreeze/actual-budget-mcp/issues/20)) ([16df28b](https://github.com/KazeFreeze/actual-budget-mcp/commit/16df28b60c1ebc5d45c942568a7515fc320da98f))
+
 ## [3.0.0](https://github.com/KazeFreeze/actual-budget-mcp/compare/v2.1.0...v3.0.0) (2026-05-06)
 
 
