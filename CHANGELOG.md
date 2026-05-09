@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.0.1...v3.1.0) (2026-05-09)
+
+
+### Features
+
+* server/SDK version compatibility check on startup ([#23](https://github.com/KazeFreeze/actual-budget-mcp/issues/23)) ([c8f5a7f](https://github.com/KazeFreeze/actual-budget-mcp/commit/c8f5a7feaad9b2329eb1c5d45e8f7a79a745c28e))
+
 ## [3.0.1](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.0.0...v3.0.1) (2026-05-06)
 
 
