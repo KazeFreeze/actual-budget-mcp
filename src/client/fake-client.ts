@@ -14,9 +14,12 @@ import type {
 
 const uuid = (): string => crypto.randomUUID();
 
+type ServerVersionProvider = () => Promise<string | null>;
+
 export class FakeActualClient implements ActualClient {
   syncCount = 0;
   private nextSyncError: Error | null = null;
+  private serverVersionProvider: ServerVersionProvider = () => Promise.resolve('26.5.2');
 
   private readonly accounts = new Map<string, Account>();
   private readonly categories = new Map<string, Category>();
@@ -389,7 +392,20 @@ export class FakeActualClient implements ActualClient {
     return Promise.resolve();
   }
 
+  // server metadata
+  getServerVersion(): Promise<string | null> {
+    return this.serverVersionProvider();
+  }
+
   // helpers for tests
+  seedServerVersion(v: string | null | (() => Promise<string | null>)): void {
+    if (typeof v === 'function') {
+      this.serverVersionProvider = v;
+    } else {
+      this.serverVersionProvider = (): Promise<string | null> => Promise.resolve(v);
+    }
+  }
+
   seedAccount(a: Account): void {
     this.accounts.set(a.id, a);
   }

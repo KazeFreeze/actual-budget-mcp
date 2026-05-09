@@ -4,6 +4,7 @@ import { loadConfig } from './config.js';
 import { SdkActualClient } from './client/sdk-client.js';
 import { SyncCoalescer } from './client/sync-coalescer.js';
 import { installSignalHandlers } from './client/lifecycle.js';
+import { checkServerVersionCompatibility } from './client/version-check.js';
 import { createMcpServer } from './server.js';
 import { createApp } from './app.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -28,6 +29,8 @@ async function main(): Promise<void> {
 
   await client.init();
   sdkReady = true;
+
+  await checkServerVersionCompatibility(client, logger, config.strictVersionCheck);
 
   const coalescer = new SyncCoalescer(client, 2000);
 

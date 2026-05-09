@@ -227,4 +227,7 @@ export interface ActualClient {
   createTag(tag: Omit<Tag, 'id'>): Promise<string>;
   updateTag(id: string, fields: Partial<Omit<Tag, 'id'>>): Promise<void>;
   deleteTag(id: string): Promise<void>;
+
+  // server metadata
+  getServerVersion(): Promise<string | null>;
 }

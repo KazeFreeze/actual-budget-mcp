@@ -248,6 +248,12 @@ export class SdkActualClient implements ActualClient {
     await this.internalSend('notes-save', { id, note: null });
   }
 
+  // ---- server metadata
+  async getServerVersion(): Promise<string | null> {
+    const res = await api.getServerVersion();
+    return 'version' in res ? res.version : null;
+  }
+
   // ---- tags
   async getTags(): Promise<Tag[]> {
     return (await api.getTags()) as Tag[];

@@ -63,6 +63,7 @@ npm run dev
 | `MCP_PORT` | No | `3000` | Port for http/sse transport |
 | `MCP_RATE_LIMIT_PER_MIN` | No | `120` | Per-IP rate limit (http/sse) |
 | `MCP_DATA_DIR` | No | `/var/lib/actual-mcp` | SDK budget cache directory |
+| `MCP_STRICT_VERSION_CHECK` | No | `false` | If `true`, refuse to start when actual-server major version doesn't match the bundled SDK major. Default: warn and continue. |
 | `LOG_LEVEL` | No | `info` | Log level: `debug`, `info`, `warn`, `error` |
 
 ## Architecture

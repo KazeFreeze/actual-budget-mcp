@@ -45,6 +45,7 @@ const ConfigSchema = z
     mcpPort: z.coerce.number().int().positive().default(3000),
     mcpRateLimitPerMin: z.coerce.number().int().positive().default(120),
     mcpDataDir: z.string().default('/var/lib/actual-mcp'),
+    strictVersionCheck: z.coerce.boolean().default(false),
     logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   })
   .refine((c) => c.mcpTransport === 'stdio' || c.mcpApiKeys.length > 0, {
@@ -74,6 +75,7 @@ export function loadConfig(): Config {
     mcpPort: process.env.MCP_PORT,
     mcpRateLimitPerMin: process.env.MCP_RATE_LIMIT_PER_MIN,
     mcpDataDir: process.env.MCP_DATA_DIR,
+    strictVersionCheck: process.env.MCP_STRICT_VERSION_CHECK,
     logLevel: process.env.LOG_LEVEL,
   });
 
