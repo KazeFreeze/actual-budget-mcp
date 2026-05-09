@@ -28,10 +28,7 @@ export async function checkServerVersionCompatibility(
   const sdkVersion = sdkPkg.version;
   const sdkMajor = parseMajor(sdkVersion);
   if (sdkMajor === null) {
-    logger.warn(
-      { sdkVersion, msg: 'could not determine SDK version — skipping compat check' },
-      'could not determine SDK version — skipping compat check',
-    );
+    logger.warn({ sdkVersion }, 'could not determine SDK version — skipping compat check');
     return;
   }
 
@@ -40,39 +37,23 @@ export async function checkServerVersionCompatibility(
     serverVersion = await client.getServerVersion();
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.warn(
-      { error: message, msg: 'could not determine server version — skipping compat check' },
-      'could not determine server version — skipping compat check',
-    );
+    logger.warn({ error: message }, 'could not determine server version — skipping compat check');
     return;
   }
 
   const serverMajor = parseMajor(serverVersion);
   if (serverMajor === null) {
-    logger.warn(
-      {
-        serverVersion,
-        msg: 'could not determine server version — skipping compat check',
-      },
-      'could not determine server version — skipping compat check',
-    );
+    logger.warn({ serverVersion }, 'could not determine server version — skipping compat check');
     return;
   }
 
   if (serverMajor === sdkMajor) {
-    logger.info(
-      { serverVersion, sdkVersion, msg: 'server/SDK versions compatible' },
-      'server/SDK versions compatible',
-    );
+    logger.info({ serverVersion, sdkVersion }, 'server/SDK versions compatible');
     return;
   }
 
   logger.warn(
-    {
-      serverVersion,
-      sdkVersion,
-      msg: 'server/SDK major version mismatch — proceed with caution',
-    },
+    { serverVersion, sdkVersion },
     'server/SDK major version mismatch — proceed with caution',
   );
 
