@@ -22,7 +22,7 @@ export async function createApp(
   const { config, client, coalescer, sdkInitialized, logger, version } = deps;
   const express = (await import('express')).default;
   const helmet = (await import('helmet')).default;
-  const { rateLimit } = await import('express-rate-limit');
+  const { rateLimit, ipKeyGenerator } = await import('express-rate-limit');
   const app = express();
 
   app.use((req, res, next) => {
@@ -41,8 +41,11 @@ export async function createApp(
     limit: config.mcpRateLimitPerMin,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    keyGenerator: (req) =>
-      (req as unknown as { callerKey?: string }).callerKey ?? req.ip ?? 'anonymous',
+    keyGenerator: (req) => {
+      const callerKey = (req as unknown as { callerKey?: string }).callerKey;
+      if (callerKey !== undefined) return callerKey;
+      return req.ip !== undefined ? ipKeyGenerator(req.ip) : 'anonymous';
+    },
     message: { error: 'Too many requests' },
   });
 
