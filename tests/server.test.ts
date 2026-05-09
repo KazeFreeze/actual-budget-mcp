@@ -15,6 +15,7 @@ const cfg: Config = {
   mcpPort: 3000,
   mcpRateLimitPerMin: 120,
   mcpDataDir: '/tmp',
+  strictVersionCheck: false,
   logLevel: 'info',
 };
 
