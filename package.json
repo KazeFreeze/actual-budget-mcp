@@ -1,6 +1,6 @@
 {
   "name": "actual-budget-mcp",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "MCP server for Actual Budget using the official @actual-app/api SDK",
   "license": "MIT",
   "author": "Bernard G. Tapiru, Jr.",

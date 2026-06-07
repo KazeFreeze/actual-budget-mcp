@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.1](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.1.0...v3.1.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* dedupe pino msg field, use ipKeyGenerator for IPv6-safe rate limit ([#25](https://github.com/KazeFreeze/actual-budget-mcp/issues/25)) ([173fe8d](https://github.com/KazeFreeze/actual-budget-mcp/commit/173fe8dc3d6e808ecdff91eb5a6c4213b2d528b3))
+
 ## [3.1.0](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.0.1...v3.1.0) (2026-05-09)
 
 
