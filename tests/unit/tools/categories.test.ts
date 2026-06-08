@@ -96,6 +96,24 @@ describe('category tools', () => {
     expect(r.content[0]?.text).toContain('Hidden Group');
   });
 
+  it('create-category-group accepts hidden flag', async () => {
+    const { server, client } = setup(registerCategoryTools);
+    const r = await call(server, 'create-category-group', { name: 'Hidden Group', hidden: true });
+    expect(r.isError).toBeFalsy();
+    const groups = await client.getCategoryGroups();
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.hidden).toBe(true);
+  });
+
+  it('update-category-group can toggle hidden', async () => {
+    const { server, client } = setup(registerCategoryTools);
+    const id = await client.createCategoryGroup({ name: 'Group', hidden: false });
+    const r = await call(server, 'update-category-group', { id, fields: { hidden: true } });
+    expect(r.isError).toBeFalsy();
+    const groups = await client.getCategoryGroups();
+    expect(groups[0]?.hidden).toBe(true);
+  });
+
   it('zod rejects invalid input', async () => {
     const { server } = setup(registerCategoryTools);
     await expect(

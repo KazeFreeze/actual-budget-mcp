@@ -116,7 +116,11 @@ export function registerCategoryTools(server: McpServer, deps: McpServerDeps): v
     'create-category-group',
     {
       description: 'Create a new category group.',
-      inputSchema: { name: z.string().min(1), is_income: z.boolean().optional() },
+      inputSchema: {
+        name: z.string().min(1),
+        is_income: z.boolean().optional(),
+        hidden: z.boolean().optional(),
+      },
     },
     adaptAudited(
       writeTool(
@@ -137,7 +141,11 @@ export function registerCategoryTools(server: McpServer, deps: McpServerDeps): v
       description: 'Update fields on an existing category group.',
       inputSchema: {
         id: z.string().min(1),
-        fields: z.object({ name: z.string().optional(), is_income: z.boolean().optional() }),
+        fields: z.object({
+          name: z.string().optional(),
+          is_income: z.boolean().optional(),
+          hidden: z.boolean().optional(),
+        }),
       },
     },
     adaptAudited(
