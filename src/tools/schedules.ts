@@ -45,7 +45,7 @@ function normalizeDate(
   date: string | z.infer<typeof recurConfigSchema>,
 ): string | ScheduleRecurConfig {
   if (typeof date === 'string') return date;
-  return compact(date) as ScheduleRecurConfig;
+  return compact(date);
 }
 
 export function registerScheduleTools(server: McpServer, deps: McpServerDeps): void {
