@@ -8,10 +8,15 @@ export function registerCategoryTools(server: McpServer, deps: McpServerDeps): v
 
   server.registerTool(
     'get-categories',
-    { description: 'List all categories.', inputSchema: {} },
+    {
+      description:
+        'List all categories. Optional hidden filter: true returns only hidden categories, false returns only visible categories, omitted returns all.',
+      inputSchema: { hidden: z.boolean().optional() },
+    },
     adaptRead(
-      readTool(coalescer, async () => {
-        const cats = await client.getCategories();
+      readTool(coalescer, async ({ hidden }: { hidden?: boolean | undefined }) => {
+        const opts = hidden === undefined ? undefined : { hidden };
+        const cats = await client.getCategories(opts);
         return ok(JSON.stringify(cats, null, 2));
       }),
     ),
@@ -19,10 +24,15 @@ export function registerCategoryTools(server: McpServer, deps: McpServerDeps): v
 
   server.registerTool(
     'get-category-groups',
-    { description: 'List all category groups (with their categories).', inputSchema: {} },
+    {
+      description:
+        'List all category groups (with their categories). Optional hidden filter: true returns only hidden groups, false returns only visible groups, omitted returns all.',
+      inputSchema: { hidden: z.boolean().optional() },
+    },
     adaptRead(
-      readTool(coalescer, async () => {
-        const groups = await client.getCategoryGroups();
+      readTool(coalescer, async ({ hidden }: { hidden?: boolean | undefined }) => {
+        const opts = hidden === undefined ? undefined : { hidden };
+        const groups = await client.getCategoryGroups(opts);
         return ok(JSON.stringify(groups, null, 2));
       }),
     ),

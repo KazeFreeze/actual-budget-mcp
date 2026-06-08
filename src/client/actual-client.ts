@@ -19,6 +19,7 @@ export interface CategoryGroup {
   id: string;
   name: string;
   is_income?: boolean;
+  hidden?: boolean;
   categories?: Category[];
 }
 
@@ -152,11 +153,11 @@ export interface ActualClient {
   runQuery<T = unknown>(query: unknown): Promise<T>;
 
   // categories
-  getCategories(): Promise<Category[]>;
+  getCategories(options?: { hidden?: boolean }): Promise<Category[]>;
   createCategory(input: Omit<Category, 'id'>): Promise<string>;
   updateCategory(id: string, fields: Partial<Omit<Category, 'id'>>): Promise<void>;
   deleteCategory(id: string, transferCategoryId?: string): Promise<void>;
-  getCategoryGroups(): Promise<CategoryGroup[]>;
+  getCategoryGroups(options?: { hidden?: boolean }): Promise<CategoryGroup[]>;
   createCategoryGroup(input: Omit<CategoryGroup, 'id' | 'categories'>): Promise<string>;
   updateCategoryGroup(
     id: string,

@@ -54,8 +54,8 @@ export class SdkActualClient implements ActualClient {
   }
 
   // ---- categories
-  async getCategories(): Promise<Category[]> {
-    return (await api.getCategories()) as Category[];
+  async getCategories(options?: { hidden?: boolean }): Promise<Category[]> {
+    return (await api.getCategories(options)) as Category[];
   }
   async createCategory(input: Omit<Category, 'id'>): Promise<string> {
     return api.createCategory(input as Parameters<typeof api.createCategory>[0]);
@@ -66,8 +66,8 @@ export class SdkActualClient implements ActualClient {
   async deleteCategory(id: string, transferCategoryId?: string): Promise<void> {
     await api.deleteCategory(id, transferCategoryId);
   }
-  async getCategoryGroups(): Promise<CategoryGroup[]> {
-    return (await api.getCategoryGroups()) as CategoryGroup[];
+  async getCategoryGroups(options?: { hidden?: boolean }): Promise<CategoryGroup[]> {
+    return (await api.getCategoryGroups(options)) as CategoryGroup[];
   }
   async createCategoryGroup(input: Omit<CategoryGroup, 'id' | 'categories'>): Promise<string> {
     return api.createCategoryGroup(input as Parameters<typeof api.createCategoryGroup>[0]);
