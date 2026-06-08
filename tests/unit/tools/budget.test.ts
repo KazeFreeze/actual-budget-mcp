@@ -140,7 +140,6 @@ describe('budget tools', () => {
     });
     const r = await call(server, 'get-budget-month', { month: '2026-05' });
     expect(r.isError).toBeFalsy();
-    expect(r.content[0]?.text).toContain('"received"');
-    expect(r.content[0]?.text).toContain('500000');
+    expect(r.content[0]?.text).toContain('"received": 500000');
   });
 });

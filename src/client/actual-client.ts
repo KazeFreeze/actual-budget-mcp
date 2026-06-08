@@ -69,11 +69,11 @@ export interface BudgetMonth {
     id: string;
     name: string;
     is_income: boolean;
-    /** Present on non-income groups and on tracking-budget income groups. */
+    /** Present on non-income groups and on tracking-budget income groups. Envelope-budget income groups omit this field. Verified in @actual-app/api@26.6.0 handlers["api/budget-month"]. */
     budgeted?: number;
-    /** Present on non-income groups only. */
+    /** Present on non-income groups only (see balance comment). */
     spent?: number;
-    /** Present on non-income groups and on tracking-budget income groups. */
+    /** Present on non-income groups and on tracking-budget income groups (see budgeted comment). */
     balance?: number;
     /** Present on income groups (both envelope and tracking). */
     received?: number;
