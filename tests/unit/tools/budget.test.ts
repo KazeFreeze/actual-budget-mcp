@@ -101,4 +101,45 @@ describe('budget tools', () => {
     expect(r.isError).toBeFalsy();
     expect(calls).toEqual(['2026-05']);
   });
+
+  it('get-budget-month surfaces received field for tracking-budget income categories', async () => {
+    const { server, client } = setup(registerBudgetTools);
+    client.seedBudgetMonth({
+      month: '2026-05',
+      incomeAvailable: 0,
+      lastMonthOverspent: 0,
+      forNextMonth: 0,
+      totalBudgeted: 0,
+      toBudget: 0,
+      fromLastMonth: 0,
+      totalIncome: 500000,
+      totalSpent: 0,
+      totalBalance: 500000,
+      categoryGroups: [
+        {
+          id: 'grp-income',
+          name: 'Income',
+          is_income: true,
+          budgeted: 500000,
+          received: 500000,
+          balance: 0,
+          categories: [
+            {
+              id: 'cat-salary',
+              name: 'Salary',
+              is_income: true,
+              hidden: false,
+              budgeted: 500000,
+              received: 500000,
+              balance: 0,
+              carryover: false,
+            },
+          ],
+        },
+      ],
+    });
+    const r = await call(server, 'get-budget-month', { month: '2026-05' });
+    expect(r.isError).toBeFalsy();
+    expect(r.content[0]?.text).toContain('"received": 500000');
+  });
 });

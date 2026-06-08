@@ -1,6 +1,6 @@
 {
   "name": "actual-budget-mcp",
-  "version": "3.1.1",
+  "version": "3.2.0",
   "description": "MCP server for Actual Budget using the official @actual-app/api SDK",
   "license": "MIT",
   "author": "Bernard G. Tapiru, Jr.",
@@ -44,7 +44,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@actual-app/api": "^26.5.0",
+    "@actual-app/api": "^26.6.0",
     "@modelcontextprotocol/sdk": "^1.27.0",
     "date-fns": "^4.1.0",
     "dotenv": "^17.3.0",

@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.0](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.1.1...v3.2.0) (2026-06-08)
+
+
+### Features
+
+* audit @actual-app/api 26.5.0 → 26.6.0 ([#34](https://github.com/KazeFreeze/actual-budget-mcp/issues/34)) ([01d2158](https://github.com/KazeFreeze/actual-budget-mcp/commit/01d215819a2f79d4f7443db90962b9b1b3340ef0))
+
 ## [3.1.1](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.1.0...v3.1.1) (2026-05-09)
 
 

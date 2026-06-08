@@ -69,6 +69,8 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
         const monthDate = parse(m, 'yyyy-MM', new Date());
         const untilDate = format(endOfMonth(monthDate), 'yyyy-MM-dd');
 
+        // No hidden filter: analytics needs all groups (including hidden) to
+        // correctly classify transactions by income group membership.
         const groups = await client.getCategoryGroups();
         const incomeCategories = new Set<string>();
         for (const group of groups) {
@@ -170,6 +172,8 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
         }) => {
           const groupBy = group_by ?? 'category';
 
+          // No hidden filter: analytics needs all groups (including hidden) to
+          // correctly classify transactions by income group membership.
           const [groups, cats, payees] = await Promise.all([
             client.getCategoryGroups(),
             client.getCategories(),
@@ -305,9 +309,10 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
           if (group.is_income) continue;
           for (const cat of group.categories) {
             if (cat.hidden) continue;
-            const { budgeted, spent } = cat;
+            const budgeted = cat.budgeted ?? 0;
+            const spent = cat.spent ?? 0;
             const variance = budgeted + spent;
-            const status = cat.balance < 0 ? '\u26a0 Over' : '\u2713';
+            const status = (cat.balance ?? 0) < 0 ? '\u26a0 Over' : '\u2713';
 
             totalBudgeted += budgeted;
             totalSpent += spent;
@@ -427,6 +432,8 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
             monthList.push(monthsBack(base, i));
           }
 
+          // No hidden filter: analytics needs all groups (including hidden) to
+          // correctly classify transactions by income group membership.
           const [groups, cats] = await Promise.all([
             client.getCategoryGroups(),
             client.getCategories(),
@@ -534,6 +541,8 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
             return err('Invalid month range: start_month must be before end_month');
           }
 
+          // No hidden filter: analytics needs all groups (including hidden) to
+          // correctly classify transactions by income group membership.
           const groups = await client.getCategoryGroups();
           const incomeCategories = new Set<string>();
           for (const group of groups) {
