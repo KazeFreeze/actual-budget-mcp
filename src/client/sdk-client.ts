@@ -58,25 +58,25 @@ export class SdkActualClient implements ActualClient {
     return (await api.getCategories(options)) as Category[];
   }
   async createCategory(input: Omit<Category, 'id'>): Promise<string> {
-    return api.createCategory(input as Parameters<typeof api.createCategory>[0]);
+    return api.createCategory(input);
   }
   async updateCategory(id: string, fields: Partial<Omit<Category, 'id'>>): Promise<void> {
-    await api.updateCategory(id, fields as Parameters<typeof api.updateCategory>[1]);
+    await api.updateCategory(id, fields);
   }
   async deleteCategory(id: string, transferCategoryId?: string): Promise<void> {
     await api.deleteCategory(id, transferCategoryId);
   }
   async getCategoryGroups(options?: { hidden?: boolean }): Promise<CategoryGroup[]> {
-    return (await api.getCategoryGroups(options)) as CategoryGroup[];
+    return await api.getCategoryGroups(options);
   }
   async createCategoryGroup(input: Omit<CategoryGroup, 'id' | 'categories'>): Promise<string> {
-    return api.createCategoryGroup(input as Parameters<typeof api.createCategoryGroup>[0]);
+    return api.createCategoryGroup(input);
   }
   async updateCategoryGroup(
     id: string,
     fields: Partial<Omit<CategoryGroup, 'id' | 'categories'>>,
   ): Promise<void> {
-    await api.updateCategoryGroup(id, fields as Parameters<typeof api.updateCategoryGroup>[1]);
+    await api.updateCategoryGroup(id, fields);
   }
   async deleteCategoryGroup(id: string, transferCategoryId?: string): Promise<void> {
     await api.deleteCategoryGroup(id, transferCategoryId);
@@ -84,13 +84,13 @@ export class SdkActualClient implements ActualClient {
 
   // ---- accounts
   async getAccounts(): Promise<Account[]> {
-    return (await api.getAccounts()) as Account[];
+    return await api.getAccounts();
   }
   async createAccount(input: Omit<Account, 'id'>, initialBalance = 0): Promise<string> {
-    return api.createAccount(input as Parameters<typeof api.createAccount>[0], initialBalance);
+    return api.createAccount(input, initialBalance);
   }
   async updateAccount(id: string, fields: Partial<Omit<Account, 'id'>>): Promise<void> {
-    await api.updateAccount(id, fields as Parameters<typeof api.updateAccount>[1]);
+    await api.updateAccount(id, fields);
   }
   async closeAccount(
     id: string,
@@ -114,7 +114,7 @@ export class SdkActualClient implements ActualClient {
 
   // ---- transactions
   async getTransactions(accountId: string, since: string, until: string): Promise<Transaction[]> {
-    return (await api.getTransactions(accountId, since, until)) as Transaction[];
+    return await api.getTransactions(accountId, since, until);
   }
   async addTransactions(
     accountId: string,
@@ -139,7 +139,7 @@ export class SdkActualClient implements ActualClient {
 
   // ---- payees
   async getPayees(): Promise<Payee[]> {
-    return (await api.getPayees()) as Payee[];
+    return await api.getPayees();
   }
   async createPayee(input: Omit<Payee, 'id'>): Promise<string> {
     return api.createPayee(input as Parameters<typeof api.createPayee>[0]);
@@ -154,21 +154,21 @@ export class SdkActualClient implements ActualClient {
     await api.mergePayees(targetId, mergeIds);
   }
   async getCommonPayees(): Promise<Payee[]> {
-    return (await api.getCommonPayees()) as Payee[];
+    return await api.getCommonPayees();
   }
 
   // ---- rules
   async getRules(): Promise<Rule[]> {
-    return (await api.getRules()) as Rule[];
+    return await api.getRules();
   }
   async getPayeeRules(payeeId: string): Promise<Rule[]> {
-    return (await api.getPayeeRules(payeeId)) as Rule[];
+    return await api.getPayeeRules(payeeId);
   }
   async createRule(rule: Omit<Rule, 'id'>): Promise<Rule> {
-    return (await api.createRule(rule as Parameters<typeof api.createRule>[0])) as Rule;
+    return await api.createRule(rule as Parameters<typeof api.createRule>[0]);
   }
   async updateRule(rule: Rule): Promise<Rule> {
-    return (await api.updateRule(rule as Parameters<typeof api.updateRule>[0])) as Rule;
+    return await api.updateRule(rule as Parameters<typeof api.updateRule>[0]);
   }
   async deleteRule(id: string): Promise<void> {
     await api.deleteRule(id);
@@ -197,12 +197,12 @@ export class SdkActualClient implements ActualClient {
 
   // ---- schedules
   async getSchedules(): Promise<Schedule[]> {
-    return (await api.getSchedules()) as Schedule[];
+    return await api.getSchedules();
   }
   async createSchedule(
     input: Omit<Schedule, 'id' | 'rule' | 'next_date' | 'completed'>,
   ): Promise<string> {
-    return api.createSchedule(input as Parameters<typeof api.createSchedule>[0]);
+    return api.createSchedule(input);
   }
   async updateSchedule(
     id: string,
@@ -211,7 +211,7 @@ export class SdkActualClient implements ActualClient {
   ): Promise<void> {
     // SDK returns Promise<string> (the schedule id) — we discard it; the
     // caller already has the id.
-    await api.updateSchedule(id, fields as Parameters<typeof api.updateSchedule>[1], resetNextDate);
+    await api.updateSchedule(id, fields, resetNextDate);
   }
   async deleteSchedule(id: string): Promise<void> {
     await api.deleteSchedule(id);
@@ -242,13 +242,13 @@ export class SdkActualClient implements ActualClient {
 
   // ---- tags
   async getTags(): Promise<Tag[]> {
-    return (await api.getTags()) as Tag[];
+    return await api.getTags();
   }
   async createTag(tag: Omit<Tag, 'id'>): Promise<string> {
-    return api.createTag(tag as Parameters<typeof api.createTag>[0]);
+    return api.createTag(tag);
   }
   async updateTag(id: string, fields: Partial<Omit<Tag, 'id'>>): Promise<void> {
-    await api.updateTag(id, fields as Parameters<typeof api.updateTag>[1]);
+    await api.updateTag(id, fields);
   }
   async deleteTag(id: string): Promise<void> {
     await api.deleteTag(id);

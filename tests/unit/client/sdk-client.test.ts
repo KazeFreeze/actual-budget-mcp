@@ -4,7 +4,10 @@ import { describe, it, expect, vi } from 'vitest';
 const { getNoteMock, updateNoteMock } = vi.hoisted(() => {
   return {
     getNoteMock: vi.fn(
-      async (_id: string) => ({ id: 'note-1', note: 'hi' }) as { id: string; note: string } | null,
+      async (_id: string): Promise<{ id: string; note: string } | null> => ({
+        id: 'note-1',
+        note: 'hi',
+      }),
     ),
     updateNoteMock: vi.fn(async (_id: string, _note: string | null) => undefined),
   };
