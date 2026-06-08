@@ -20,35 +20,18 @@ export interface SdkActualClientOptions {
   encryptionPassword?: string;
 }
 
-// The shape of the `lib` value returned from `api.init()`. The SDK's TS types
-// declare init's return as `Promise<void>` even though at runtime it returns
-// the internal handler bridge ({ send, on, ... }). We only need `send`.
-interface ActualLib {
-  send: (msg: string, payload?: unknown) => Promise<unknown>;
-}
-
 export class SdkActualClient implements ActualClient {
   private initialized = false;
-  // Captured from `api.init()` return value. Used for the deprecated-but-only
-  // path to persist notes (no top-level `notes-save` SDK method exists). The
-  // module-level `api.internal` export is unreliable across module-resolution
-  // contexts (e.g. when the SDK ends up loaded twice through different module
-  // graphs); the per-instance `lib` returned from init() is the canonical
-  // reference and what the SDK's own JSDoc directs callers to use.
-  private lib: ActualLib | null = null;
 
   constructor(private readonly opts: SdkActualClientOptions) {}
 
   async init(): Promise<void> {
     if (this.initialized) return;
-    // api.init's TS return type is `Promise<void>` but at runtime it returns
-    // the internal bridge ({ send, on, ... }). Capture it for `internalSend`.
-    const lib = await (api.init as unknown as (cfg: unknown) => Promise<ActualLib>)({
+    await api.init({
       dataDir: this.opts.dataDir,
       serverURL: this.opts.serverURL,
       password: this.opts.password,
     });
-    this.lib = lib;
     await api.downloadBudget(
       this.opts.syncId,
       this.opts.encryptionPassword ? { password: this.opts.encryptionPassword } : undefined,
@@ -59,7 +42,6 @@ export class SdkActualClient implements ActualClient {
   async shutdown(): Promise<void> {
     if (!this.initialized) return;
     await api.shutdown();
-    this.lib = null;
     this.initialized = false;
   }
 
@@ -72,8 +54,8 @@ export class SdkActualClient implements ActualClient {
   }
 
   // ---- categories
-  async getCategories(): Promise<Category[]> {
-    return (await api.getCategories()) as Category[];
+  async getCategories(options?: { hidden?: boolean }): Promise<Category[]> {
+    return (await api.getCategories(options)) as Category[];
   }
   async createCategory(input: Omit<Category, 'id'>): Promise<string> {
     return api.createCategory(input as Parameters<typeof api.createCategory>[0]);
@@ -84,8 +66,8 @@ export class SdkActualClient implements ActualClient {
   async deleteCategory(id: string, transferCategoryId?: string): Promise<void> {
     await api.deleteCategory(id, transferCategoryId);
   }
-  async getCategoryGroups(): Promise<CategoryGroup[]> {
-    return (await api.getCategoryGroups()) as CategoryGroup[];
+  async getCategoryGroups(options?: { hidden?: boolean }): Promise<CategoryGroup[]> {
+    return (await api.getCategoryGroups(options)) as CategoryGroup[];
   }
   async createCategoryGroup(input: Omit<CategoryGroup, 'id' | 'categories'>): Promise<string> {
     return api.createCategoryGroup(input as Parameters<typeof api.createCategoryGroup>[0]);
@@ -235,17 +217,21 @@ export class SdkActualClient implements ActualClient {
     await api.deleteSchedule(id);
   }
 
-  // ---- notes (the v2 fix)
+  // ---- notes (public API since @actual-app/api 26.6.0)
   async getNote(id: string): Promise<string | null> {
-    const res = await api.aqlQuery(api.q('notes').filter({ id }).select(['id', 'note']));
-    const rows = (res as { data: Array<{ id: string; note: string }> }).data;
-    return rows[0]?.note ?? null;
+    const res = await api.getNote(id);
+    // SDK returns `NoteEntity | null` where `NoteEntity = { id, note: string }`.
+    // `.note` is always present when the entity is non-null per the SDK type.
+    return res?.note ?? null;
   }
   async setNote(id: string, note: string): Promise<void> {
-    await this.internalSend('notes-save', { id, note });
+    await api.updateNote(id, note);
   }
   async deleteNote(id: string): Promise<void> {
-    await this.internalSend('notes-save', { id, note: null });
+    // SDK types `note` as `string` (non-null), but the underlying handler
+    // accepts `null` to clear the note. The integration test validates this.
+    // TODO: remove cast if SDK adds `null` to `NoteEntity['note']` in a future release.
+    await api.updateNote(id, null as unknown as string);
   }
 
   // ---- server metadata
@@ -266,21 +252,5 @@ export class SdkActualClient implements ActualClient {
   }
   async deleteTag(id: string): Promise<void> {
     await api.deleteTag(id);
-  }
-
-  // Bridge to the SDK's internal `send` — the only way to persist notes
-  // until the SDK exposes a top-level `setNote`. Uses `this.lib` (captured
-  // from init()'s return value) instead of the module-level `api.internal`
-  // export. The module-level export is a getter over a module-private `let`
-  // that can read as `null` if the SDK module was loaded through a different
-  // module graph than the one calling `api.init()` — this happens in
-  // production when bundlers or runtime ESM loaders end up with two copies
-  // of the @actual-app/api module. The `lib` returned from init() is local
-  // to this instance and immune to that hazard.
-  private async internalSend(msg: string, payload: unknown): Promise<unknown> {
-    if (!this.lib) {
-      throw new Error('SdkActualClient: init() has not been called');
-    }
-    return this.lib.send(msg, payload);
   }
 }

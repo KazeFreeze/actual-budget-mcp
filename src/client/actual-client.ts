@@ -19,6 +19,7 @@ export interface CategoryGroup {
   id: string;
   name: string;
   is_income?: boolean;
+  hidden?: boolean;
   categories?: Category[];
 }
 
@@ -69,17 +70,27 @@ export interface BudgetMonth {
     id: string;
     name: string;
     is_income: boolean;
-    budgeted: number;
-    spent: number;
-    balance: number;
+    /** Present on non-income groups and on tracking-budget income groups. Envelope-budget income groups omit this field. Verified in @actual-app/api@26.6.0 handlers["api/budget-month"]. */
+    budgeted?: number;
+    /** Present on non-income groups only (see balance comment). */
+    spent?: number;
+    /** Present on non-income groups and on tracking-budget income groups (see budgeted comment). */
+    balance?: number;
+    /** Present on income groups (both envelope and tracking). */
+    received?: number;
     categories: Array<{
       id: string;
       name: string;
       is_income: boolean;
       hidden: boolean;
-      budgeted: number;
-      spent: number;
-      balance: number;
+      /** Present on non-income categories and on tracking-budget income categories. */
+      budgeted?: number;
+      /** Present on non-income categories only. */
+      spent?: number;
+      /** Present on non-income categories and on tracking-budget income categories. */
+      balance?: number;
+      /** Present on income categories (both envelope and tracking). */
+      received?: number;
       carryover?: boolean;
     }>;
   }>;
@@ -142,11 +153,11 @@ export interface ActualClient {
   runQuery<T = unknown>(query: unknown): Promise<T>;
 
   // categories
-  getCategories(): Promise<Category[]>;
+  getCategories(options?: { hidden?: boolean }): Promise<Category[]>;
   createCategory(input: Omit<Category, 'id'>): Promise<string>;
   updateCategory(id: string, fields: Partial<Omit<Category, 'id'>>): Promise<void>;
   deleteCategory(id: string, transferCategoryId?: string): Promise<void>;
-  getCategoryGroups(): Promise<CategoryGroup[]>;
+  getCategoryGroups(options?: { hidden?: boolean }): Promise<CategoryGroup[]>;
   createCategoryGroup(input: Omit<CategoryGroup, 'id' | 'categories'>): Promise<string>;
   updateCategoryGroup(
     id: string,

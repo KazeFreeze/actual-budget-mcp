@@ -59,8 +59,10 @@ export class FakeActualClient implements ActualClient {
   }
 
   // categories
-  getCategories(): Promise<Category[]> {
-    return Promise.resolve([...this.categories.values()]);
+  getCategories(options?: { hidden?: boolean }): Promise<Category[]> {
+    const all = [...this.categories.values()];
+    if (options?.hidden === undefined) return Promise.resolve(all);
+    return Promise.resolve(all.filter((c) => Boolean(c.hidden) === options.hidden));
   }
 
   createCategory(input: Omit<Category, 'id'>): Promise<string> {
@@ -81,8 +83,10 @@ export class FakeActualClient implements ActualClient {
     return Promise.resolve();
   }
 
-  getCategoryGroups(): Promise<CategoryGroup[]> {
-    return Promise.resolve([...this.categoryGroups.values()]);
+  getCategoryGroups(options?: { hidden?: boolean }): Promise<CategoryGroup[]> {
+    const all = [...this.categoryGroups.values()];
+    if (options?.hidden === undefined) return Promise.resolve(all);
+    return Promise.resolve(all.filter((g) => Boolean(g.hidden) === options.hidden));
   }
 
   createCategoryGroup(input: Omit<CategoryGroup, 'id' | 'categories'>): Promise<string> {
