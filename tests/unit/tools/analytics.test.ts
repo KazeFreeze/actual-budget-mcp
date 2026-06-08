@@ -83,6 +83,47 @@ describe('monthly-financial-summary', () => {
     expect(r.isError).toBeFalsy();
     expect(r.content[0]?.text).toContain(`Monthly Financial Summary: ${today()}`);
   });
+
+  it('counts split-parent children toward expenses and top categories', async () => {
+    const { server, client } = setup(registerAnalyticsTools);
+    client.seedAccount({ id: 'a1', name: 'Checking' });
+    client.seedCategoryGroup({
+      id: 'gi',
+      name: 'Income',
+      is_income: true,
+      categories: [{ id: 'c-pay', name: 'Salary', group_id: 'gi', is_income: true }],
+    });
+    client.seedCategoryGroup({
+      id: 'gs',
+      name: 'Spending',
+      categories: [
+        { id: 'c-food', name: 'Food', group_id: 'gs' },
+        { id: 'c-fuel', name: 'Fuel', group_id: 'gs' },
+      ],
+    });
+    client.seedCategory({ id: 'c-pay', name: 'Salary', group_id: 'gi', is_income: true });
+    client.seedCategory({ id: 'c-food', name: 'Food', group_id: 'gs' });
+    client.seedCategory({ id: 'c-fuel', name: 'Fuel', group_id: 'gs' });
+
+    client.seedTransaction({
+      id: 'tsplit',
+      account: 'a1',
+      date: '2026-05-10',
+      amount: -50000,
+      category: null,
+      subtransactions: [
+        { id: 'tsplit-1', account: 'a1', date: '2026-05-10', amount: -30000, category: 'c-food' },
+        { id: 'tsplit-2', account: 'a1', date: '2026-05-10', amount: -20000, category: 'c-fuel' },
+      ],
+    });
+
+    const r = await call(server, 'monthly-financial-summary', { month: '2026-05' });
+    expect(r.isError).toBeFalsy();
+    const text = r.content[0]?.text ?? '';
+    expect(text).toContain('**Expenses:** -500.00');
+    expect(text).toContain('Food');
+    expect(text).toContain('Fuel');
+  });
 });
 
 describe('spending-analysis', () => {
@@ -260,6 +301,39 @@ describe('spending-analysis', () => {
     expect(text).toContain('Food');
     expect(text).not.toContain('Salary');
     expect(text).toContain('-100.00'); // total = only the food spend
+  });
+
+  // Regression: split parents arrive with category=null and the full amount;
+  // children carry the real per-line categories. Previously the parent was
+  // skipped and the children were never visited, so categorized child spend
+  // vanished from every analytics tool.
+  it('distributes split-parent amounts across child categories', async () => {
+    const { server, client } = setup(registerAnalyticsTools);
+    seedSpending(client);
+    client.seedTransaction({
+      id: 'tsplit',
+      account: 'a1',
+      date: '2026-05-10',
+      amount: -30000,
+      category: null,
+      subtransactions: [
+        { id: 'tsplit-1', account: 'a1', date: '2026-05-10', amount: -20000, category: 'c-food' },
+        { id: 'tsplit-2', account: 'a1', date: '2026-05-10', amount: -10000, category: 'c-fuel' },
+      ],
+    });
+    const r = await call(server, 'spending-analysis', {
+      start_date: '2026-05-01',
+      end_date: '2026-05-31',
+      group_by: 'category',
+    });
+    expect(r.isError).toBeFalsy();
+    const text = r.content[0]?.text ?? '';
+    expect(text).toContain('Food');
+    expect(text).toContain('-200.00'); // food child
+    expect(text).toContain('Fuel');
+    expect(text).toContain('-100.00'); // fuel child
+    expect(text).toContain('-300.00'); // total equals parent's full amount
+    expect(text).not.toContain('Uncategorized');
   });
 });
 
@@ -530,6 +604,32 @@ describe('trend-analysis', () => {
     expect(r.isError).toBeFalsy();
     expect(r.content[0]?.text).toContain('No spending data found for the specified period.');
   });
+
+  it('credits split-parent children to the right category in the trend', async () => {
+    const { server, client } = setup(registerAnalyticsTools);
+    client.seedAccount({ id: 'a1', name: 'Checking' });
+    client.seedCategoryGroup({
+      id: 'gs',
+      name: 'Spending',
+      categories: [{ id: 'c-food', name: 'Food', group_id: 'gs' }],
+    });
+    client.seedCategory({ id: 'c-food', name: 'Food', group_id: 'gs' });
+    const now = format(new Date(), 'yyyy-MM-dd');
+    client.seedTransaction({
+      id: 'tsplit',
+      account: 'a1',
+      date: now,
+      amount: -8000,
+      category: null,
+      subtransactions: [
+        { id: 'tsplit-1', account: 'a1', date: now, amount: -8000, category: 'c-food' },
+      ],
+    });
+
+    const r = await call(server, 'trend-analysis', { months: 1 });
+    expect(r.isError).toBeFalsy();
+    expect(r.content[0]?.text).toContain('### Food');
+  });
 });
 
 describe('income-expense-timeline', () => {
@@ -601,5 +701,51 @@ describe('income-expense-timeline', () => {
     });
     expect(r.isError).toBe(true);
     expect(r.content[0]?.text ?? '').toContain('Invalid month range');
+  });
+
+  it("includes split-parent children in a month's expenses", async () => {
+    const { server, client } = setup(registerAnalyticsTools);
+    client.seedAccount({ id: 'a1', name: 'Checking' });
+    client.seedCategoryGroup({
+      id: 'gi',
+      name: 'Income',
+      is_income: true,
+      categories: [{ id: 'c-pay', name: 'Salary', group_id: 'gi', is_income: true }],
+    });
+    client.seedCategoryGroup({
+      id: 'gs',
+      name: 'Spending',
+      categories: [{ id: 'c-food', name: 'Food', group_id: 'gs' }],
+    });
+    client.seedCategory({ id: 'c-pay', name: 'Salary', group_id: 'gi', is_income: true });
+    client.seedCategory({ id: 'c-food', name: 'Food', group_id: 'gs' });
+    client.seedTransaction({
+      id: 'tinc',
+      account: 'a1',
+      date: '2026-05-01',
+      amount: 100000,
+      category: 'c-pay',
+    });
+    client.seedTransaction({
+      id: 'tsplit',
+      account: 'a1',
+      date: '2026-05-20',
+      amount: -40000,
+      category: null,
+      subtransactions: [
+        { id: 'tsplit-1', account: 'a1', date: '2026-05-20', amount: -25000, category: 'c-food' },
+        { id: 'tsplit-2', account: 'a1', date: '2026-05-20', amount: -15000, category: 'c-food' },
+      ],
+    });
+
+    const r = await call(server, 'income-expense-timeline', {
+      start_month: '2026-05',
+      end_month: '2026-05',
+    });
+    expect(r.isError).toBeFalsy();
+    const text = r.content[0]?.text ?? '';
+    // Income 1,000.00, expenses 400.00 from split children, net 600.00.
+    expect(text).toContain('-400.00');
+    expect(text).toContain('600.00');
   });
 });

@@ -25,7 +25,26 @@ async function getAllTransactions(
   const results = await Promise.all(
     open.map((a) => client.getTransactions(a.id, sinceDate, untilDate)),
   );
-  return results.flat();
+  return results.flat().flatMap(expandSplit);
+}
+
+/**
+ * Replace a split parent with its children for analytics aggregation.
+ * The SDK returns one parent row per split with the full amount and
+ * `category: null`, while the children inside `subtransactions` carry the
+ * real per-line categories and amounts. Counting parents would either
+ * double-count (parent + children) or — historically — drop all
+ * categorized child spend. Children inherit `payee` from the parent
+ * when their own payee is null (a common shape for split bills).
+ */
+function expandSplit(tx: Transaction): Transaction[] {
+  if (!Array.isArray(tx.subtransactions) || tx.subtransactions.length === 0) {
+    return [tx];
+  }
+  return tx.subtransactions.map((child) => ({
+    ...child,
+    payee: child.payee ?? tx.payee ?? null,
+  }));
 }
 
 /** Compute month string N months back from a given YYYY-MM. */
@@ -39,16 +58,6 @@ function monthRange(startMonth: string, endMonth: string): string[] {
   const start = parse(startMonth, 'yyyy-MM', new Date());
   const end = parse(endMonth, 'yyyy-MM', new Date());
   return eachMonthOfInterval({ start, end }).map((d) => format(d, 'yyyy-MM'));
-}
-
-/**
- * Skip the parent row of a split transaction. Per v2 conventions a parent
- * carries `subtransactions: Transaction[]` whose amounts sum to the parent
- * amount; counting both would double-count. Children have no
- * `subtransactions` field (or an empty one).
- */
-function isSplitParent(tx: Transaction): boolean {
-  return Array.isArray(tx.subtransactions) && tx.subtransactions.length > 0;
 }
 
 export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): void {
@@ -91,8 +100,6 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
         const categorySpending = new Map<string, number>();
 
         for (const tx of txs) {
-          if (isSplitParent(tx)) continue;
-
           const amount = tx.amount;
           const categoryId = tx.category ?? null;
 
@@ -199,7 +206,6 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
           }
 
           const classify = (tx: Transaction): string | null => {
-            if (isSplitParent(tx)) return null;
             if (tx.amount >= 0) return null; // skip income
             const catId = tx.category ?? null;
             if (catId && incomeCategories.has(catId)) return null;
@@ -460,7 +466,6 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
             const txs = await getAllTransactions(client, sinceDate, untilDate);
             const catSpending = new Map<string, number>();
             for (const tx of txs) {
-              if (isSplitParent(tx)) continue;
               const amount = tx.amount;
               if (amount >= 0) continue;
               const catId = tx.category ?? null;
@@ -571,7 +576,6 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
             let expenses = 0;
 
             for (const tx of txs) {
-              if (isSplitParent(tx)) continue;
               const amount = tx.amount;
               const catId = tx.category ?? null;
 
