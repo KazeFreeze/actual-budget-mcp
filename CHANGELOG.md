@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.1](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.2.0...v3.2.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* **analytics:** expand split parents into children for spending totals ([#38](https://github.com/KazeFreeze/actual-budget-mcp/issues/38)) ([a4196cf](https://github.com/KazeFreeze/actual-budget-mcp/commit/a4196cf145c1acf6024f6f73116df6679315a613))
+
 ## [3.2.0](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.1.1...v3.2.0) (2026-06-08)
 
 
