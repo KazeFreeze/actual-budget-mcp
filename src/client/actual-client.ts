@@ -69,17 +69,27 @@ export interface BudgetMonth {
     id: string;
     name: string;
     is_income: boolean;
-    budgeted: number;
-    spent: number;
-    balance: number;
+    /** Present on non-income groups and on tracking-budget income groups. */
+    budgeted?: number;
+    /** Present on non-income groups only. */
+    spent?: number;
+    /** Present on non-income groups and on tracking-budget income groups. */
+    balance?: number;
+    /** Present on income groups (both envelope and tracking). */
+    received?: number;
     categories: Array<{
       id: string;
       name: string;
       is_income: boolean;
       hidden: boolean;
-      budgeted: number;
-      spent: number;
-      balance: number;
+      /** Present on non-income categories and on tracking-budget income categories. */
+      budgeted?: number;
+      /** Present on non-income categories only. */
+      spent?: number;
+      /** Present on non-income categories and on tracking-budget income categories. */
+      balance?: number;
+      /** Present on income categories (both envelope and tracking). */
+      received?: number;
       carryover?: boolean;
     }>;
   }>;

@@ -305,9 +305,10 @@ export function registerAnalyticsTools(server: McpServer, deps: McpServerDeps): 
           if (group.is_income) continue;
           for (const cat of group.categories) {
             if (cat.hidden) continue;
-            const { budgeted, spent } = cat;
+            const budgeted = cat.budgeted ?? 0;
+            const spent = cat.spent ?? 0;
             const variance = budgeted + spent;
-            const status = cat.balance < 0 ? '\u26a0 Over' : '\u2713';
+            const status = (cat.balance ?? 0) < 0 ? '\u26a0 Over' : '\u2713';
 
             totalBudgeted += budgeted;
             totalSpent += spent;
