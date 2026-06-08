@@ -36,6 +36,14 @@ describe('FakeActualClient', () => {
     expect(await c.getCategories()).toHaveLength(2);
   });
 
+  it('getCategories({ hidden: false }) treats absent hidden field as visible', async () => {
+    await c.createCategory({ name: 'NoHiddenField', group_id: 'g1' });
+    await c.createCategory({ name: 'ExplicitlyHidden', group_id: 'g1', hidden: true });
+    const visible = await c.getCategories({ hidden: false });
+    expect(visible).toHaveLength(1);
+    expect(visible[0]?.name).toBe('NoHiddenField');
+  });
+
   it('getCategoryGroups filters by hidden: true', async () => {
     c.seedCategoryGroup({ id: 'g1', name: 'Visible Group', hidden: false });
     c.seedCategoryGroup({ id: 'g2', name: 'Hidden Group', hidden: true });
@@ -56,6 +64,14 @@ describe('FakeActualClient', () => {
     c.seedCategoryGroup({ id: 'g1', name: 'Visible Group', hidden: false });
     c.seedCategoryGroup({ id: 'g2', name: 'Hidden Group', hidden: true });
     expect(await c.getCategoryGroups()).toHaveLength(2);
+  });
+
+  it('getCategoryGroups({ hidden: false }) treats absent hidden field as visible', async () => {
+    c.seedCategoryGroup({ id: 'g1', name: 'NoHiddenField Group' });
+    c.seedCategoryGroup({ id: 'g2', name: 'Explicitly Hidden Group', hidden: true });
+    const visible = await c.getCategoryGroups({ hidden: false });
+    expect(visible).toHaveLength(1);
+    expect(visible[0]?.name).toBe('NoHiddenField Group');
   });
 
   it('round-trips notes via setNote/getNote/deleteNote', async () => {
