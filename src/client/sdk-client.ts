@@ -235,17 +235,19 @@ export class SdkActualClient implements ActualClient {
     await api.deleteSchedule(id);
   }
 
-  // ---- notes (the v2 fix)
+  // ---- notes (public API since @actual-app/api 26.6.0)
   async getNote(id: string): Promise<string | null> {
-    const res = await api.aqlQuery(api.q('notes').filter({ id }).select(['id', 'note']));
-    const rows = (res as { data: Array<{ id: string; note: string }> }).data;
-    return rows[0]?.note ?? null;
+    const res = await api.getNote(id);
+    return res?.note ?? null;
   }
   async setNote(id: string, note: string): Promise<void> {
-    await this.internalSend('notes-save', { id, note });
+    await api.updateNote(id, note);
   }
   async deleteNote(id: string): Promise<void> {
-    await this.internalSend('notes-save', { id, note: null });
+    // SDK types `note` as `string` (non-null), but the underlying handler
+    // accepts `null` to clear the note (same value the internalSend hack
+    // previously sent). The integration test for deleteNote validates this.
+    await api.updateNote(id, null as unknown as string);
   }
 
   // ---- server metadata
