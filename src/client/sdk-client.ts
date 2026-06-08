@@ -220,6 +220,8 @@ export class SdkActualClient implements ActualClient {
   // ---- notes (public API since @actual-app/api 26.6.0)
   async getNote(id: string): Promise<string | null> {
     const res = await api.getNote(id);
+    // SDK returns `NoteEntity | null` where `NoteEntity = { id, note: string }`.
+    // `.note` is always present when the entity is non-null per the SDK type.
     return res?.note ?? null;
   }
   async setNote(id: string, note: string): Promise<void> {
@@ -228,6 +230,7 @@ export class SdkActualClient implements ActualClient {
   async deleteNote(id: string): Promise<void> {
     // SDK types `note` as `string` (non-null), but the underlying handler
     // accepts `null` to clear the note. The integration test validates this.
+    // TODO: remove cast if SDK adds `null` to `NoteEntity['note']` in a future release.
     await api.updateNote(id, null as unknown as string);
   }
 
