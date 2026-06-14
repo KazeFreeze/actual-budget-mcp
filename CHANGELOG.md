@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.4](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.2.3...v3.2.4) (2026-06-14)
+
+
+### Bug Fixes
+
+* **utility:** read MCP_VERSION from package.json (third hardcoded site) ([#49](https://github.com/KazeFreeze/actual-budget-mcp/issues/49)) ([b211e2f](https://github.com/KazeFreeze/actual-budget-mcp/commit/b211e2f411ff6454f1bf4fb5d5027048b0178001))
+
 ## [3.2.3](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.2.2...v3.2.3) (2026-06-14)
 
 
