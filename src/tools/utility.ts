@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { McpServerDeps } from '../server.js';
 import { ok, readTool, adaptRead } from './shared.js';
+import { VERSION as MCP_VERSION } from '../version.js';
 
 // `@actual-app/api`'s `exports` map does not expose `./package.json`, so we
 // resolve the main entry first, then walk up to read the package.json
@@ -17,8 +18,6 @@ const sdkPkgPath = resolve(dirname(sdkMain), '..', 'package.json');
 // dependency) — not user input.
 // eslint-disable-next-line security/detect-non-literal-fs-filename
 const sdkPkg = JSON.parse(readFileSync(sdkPkgPath, 'utf8')) as { version: string };
-
-const MCP_VERSION = '2.0.0';
 
 const EntityType = z.enum(['category', 'account', 'payee']);
 

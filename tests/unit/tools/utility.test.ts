@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { createRequire } from 'node:module';
 import { setup, call } from './_helpers.js';
 import { registerUtilityTools } from '../../../src/tools/utility.js';
 import { SyncCoalescer } from '../../../src/client/sync-coalescer.js';
@@ -6,6 +7,8 @@ import { FakeActualClient } from '../../../src/client/fake-client.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import pino from 'pino';
 import type { Config } from '../../../src/config.js';
+
+const pkg = createRequire(import.meta.url)('../../../package.json') as { version: string };
 
 describe('get-id-by-name', () => {
   it('returns the id for a unique category match', async () => {
@@ -74,7 +77,7 @@ describe('get-server-version', () => {
       sdkVersion: string;
       lastSyncAt: string | null;
     };
-    expect(parsed.mcpVersion).toBe('2.0.0');
+    expect(parsed.mcpVersion).toBe(pkg.version);
     expect(typeof parsed.sdkVersion).toBe('string');
     expect(parsed.sdkVersion.length).toBeGreaterThan(0);
     expect(parsed.lastSyncAt).toBeNull();
