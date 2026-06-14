@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.3](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.2.2...v3.2.3) (2026-06-14)
+
+
+### Bug Fixes
+
+* **version:** resolve package.json with a walk-up so runtime path is right ([#47](https://github.com/KazeFreeze/actual-budget-mcp/issues/47)) ([edf8f1c](https://github.com/KazeFreeze/actual-budget-mcp/commit/edf8f1c0f0b9bc3357d9feaae54b92542a9f8962))
+
 ## [3.2.2](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.2.1...v3.2.2) (2026-06-14)
 
 
