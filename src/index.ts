@@ -8,8 +8,7 @@ import { checkServerVersionCompatibility } from './client/version-check.js';
 import { createMcpServer } from './server.js';
 import { createApp } from './app.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-
-const VERSION = '2.0.0';
+import { VERSION } from './version.js';
 
 const config = loadConfig();
 const logger = pino({ name: 'actual-mcp', level: config.logLevel });
