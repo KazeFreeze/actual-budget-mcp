@@ -62,26 +62,26 @@
     ]
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.0.2",
+    "@commitlint/cli": "^21.2.0",
     "@commitlint/config-conventional": "^20.5.0",
     "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
     "@types/supertest": "^7.2.0",
-    "@typescript-eslint/eslint-plugin": "^8.60.1",
-    "@typescript-eslint/parser": "^8.60.1",
-    "eslint": "^10.4.1",
+    "@typescript-eslint/eslint-plugin": "^8.62.1",
+    "@typescript-eslint/parser": "^8.62.1",
+    "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-n": "^18.0.1",
-    "eslint-plugin-security": "^4.0.0",
+    "eslint-plugin-n": "^18.2.1",
+    "eslint-plugin-security": "^4.0.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "msw": "^2.14.6",
-    "prettier": "^3.8.3",
+    "prettier": "^3.9.4",
     "supertest": "^7.2.2",
-    "tsx": "^4.22.4",
+    "tsx": "^4.23.0",
     "typescript": "^5.9.0",
-    "typescript-eslint": "^8.60.1",
-    "vitest": "^4.1.8"
+    "typescript-eslint": "^8.62.1",
+    "vitest": "^4.1.9"
   }
 }
