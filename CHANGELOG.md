@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.5](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.2.4...v3.2.5) (2026-09-04)
+
+
+### Bug Fixes
+
+* support Actual Budget 26.9 databases ([#57](https://github.com/KazeFreeze/actual-budget-mcp/issues/57)) ([74b91f1](https://github.com/KazeFreeze/actual-budget-mcp/commit/74b91f128f63cc052be8cfb5922f44cceb74990e))
+
 ## [3.2.4](https://github.com/KazeFreeze/actual-budget-mcp/compare/v3.2.3...v3.2.4) (2026-06-14)
 
 
