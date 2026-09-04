@@ -55,7 +55,7 @@ export class SdkActualClient implements ActualClient {
 
   // ---- categories
   async getCategories(options?: { hidden?: boolean }): Promise<Category[]> {
-    return (await api.getCategories(options)) as Category[];
+    return await api.getCategories(options);
   }
   async createCategory(input: Omit<Category, 'id'>): Promise<string> {
     return api.createCategory(input);
